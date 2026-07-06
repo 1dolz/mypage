@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const multer = require('multer');
 const { parse } = require('csv-parse/sync');
 const XLSX = require('xlsx');
@@ -18,6 +19,13 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use(
   session({
+    // 세션을 서버 메모리가 아니라 Postgres에 저장.
+    // Serverless 모드로 컨테이너가 잠들었다 깨어나도 로그인이 풀리지 않도록 함.
+    store: new pgSession({
+      pool: db.pool,
+      tableName: 'session',
+      createTableIfMissing: true,
+    }),
     secret: process.env.SESSION_SECRET || 'dev-secret',
     resave: false,
     saveUninitialized: false,

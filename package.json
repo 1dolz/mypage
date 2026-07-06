@@ -6,6 +6,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "connect-pg-simple": "^9.0.1",
     "csv-parse": "^5.5.6",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
