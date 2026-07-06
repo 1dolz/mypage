@@ -17,34 +17,73 @@
 
   <% if (saved) { %><p style="color:#080;">저장되었습니다.</p><% } %>
 
-  <div class="card">
-    <table>
-      <tr><th>키</th><th>값</th><th></th></tr>
-      <% settings.forEach(s => { %>
-        <tr>
-          <form method="POST" action="/settings">
-            <td style="text-align:left;"><input type="text" name="key" value="<%= s.key %>" readonly style="border:none; background:none;"></td>
-            <td style="text-align:left;"><input type="text" name="value" value="<%= s.value %>" style="width:300px;"></td>
-            <td><button type="submit" class="secondary">저장</button></td>
-          </form>
-          <form method="POST" action="/settings/delete" style="display:inline;">
-            <input type="hidden" name="key" value="<%= s.key %>">
-            <button type="submit" class="secondary">삭제</button>
-          </form>
-        </tr>
-      <% }) %>
-    </table>
+  <div class="tabs">
+    <button type="button" class="tab-btn active" data-tab="general">일반 설정</button>
+    <% mediaSchema.forEach(m => { %>
+      <button type="button" class="tab-btn" data-tab="<%= m.id %>"><%= m.label %></button>
+    <% }) %>
   </div>
 
-  <div class="card">
-    <h3 style="margin-top:0;">새 설정 추가</h3>
-    <form method="POST" action="/settings">
-      <label>키 (예: META_ACCESS_TOKEN)</label>
-      <input type="text" name="key" style="width:300px;">
-      <label>값</label>
-      <input type="text" name="value" style="width:300px;">
-      <button type="submit">추가</button>
-    </form>
+  <div id="tab-general" class="tab-content active">
+    <div class="card">
+      <table>
+        <tr><th>키</th><th>값</th><th></th></tr>
+        <% settings.forEach(s => { %>
+          <tr>
+            <form method="POST" action="/settings">
+              <td style="text-align:left;"><input type="text" name="key" value="<%= s.key %>" readonly style="border:none; background:none;"></td>
+              <td style="text-align:left;"><input type="text" name="value" value="<%= s.value %>" style="width:300px;"></td>
+              <td><button type="submit" class="secondary">저장</button></td>
+            </form>
+            <form method="POST" action="/settings/delete" style="display:inline;">
+              <input type="hidden" name="key" value="<%= s.key %>">
+              <button type="submit" class="secondary">삭제</button>
+            </form>
+          </tr>
+        <% }) %>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">새 설정 추가</h3>
+      <form method="POST" action="/settings">
+        <label>키 (예: DELIMITER)</label>
+        <input type="text" name="key" style="width:300px;">
+        <label>값</label>
+        <input type="text" name="value" style="width:300px;">
+        <button type="submit">추가</button>
+      </form>
+    </div>
   </div>
+
+  <% mediaSchema.forEach(m => { %>
+    <div id="tab-<%= m.id %>" class="tab-content">
+      <div class="card">
+        <h3 style="margin-top:0;"><%= m.label %> 연동 설정</h3>
+        <form method="POST" action="/settings/media">
+          <input type="hidden" name="source" value="<%= m.id %>">
+          <% m.fields.forEach(f => { %>
+            <div class="field-row">
+              <label><%= f.label %></label>
+              <input type="<%= f.type || 'text' %>" name="<%= f.key %>" value="<%= settingsMap[f.key] || '' %>">
+            </div>
+          <% }) %>
+          <button type="submit">저장</button>
+        </form>
+        <div class="hint">여기 입력한 값은 자동수집(cron) 및 "지금 자동수집 실행"에서 사용됩니다.</div>
+      </div>
+    </div>
+  <% }) %>
+
+  <script>
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
 </body>
 </html>

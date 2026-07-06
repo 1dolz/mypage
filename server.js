@@ -104,14 +104,57 @@ app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
 });
 
 // ===== 설정 관리 =====
+// 매체별 연동에 필요한 값들을 탭으로 묶어서 보여주기 위한 스키마.
+// 매체 연동을 추가할 때마다 여기에 그룹을 추가하면 /settings 화면에 탭이 자동으로 생김.
+const MEDIA_SETTINGS_SCHEMA = [
+  {
+    id: 'meta',
+    label: 'Meta',
+    fields: [
+      { key: 'META_APP_ID', label: 'App ID' },
+      { key: 'META_APP_SECRET', label: 'App Secret', type: 'password' },
+      { key: 'META_AD_ACCOUNT_ID', label: 'Ad Account ID (act_로 시작)' },
+      { key: 'META_ACCESS_TOKEN', label: 'Access Token', type: 'password' },
+    ],
+  },
+];
+
 app.get('/settings', requireLogin, async (req, res) => {
   const settings = await db.getSettings();
-  res.render('settings', { settings, saved: req.query.saved === '1' });
+  const settingsMap = {};
+  settings.forEach((s) => {
+    settingsMap[s.key] = s.value;
+  });
+
+  // 매체별 스키마에 포함된 키는 일반 설정 목록(키-값 테이블)에서는 숨겨서
+  // 각자의 탭에서만 관리하도록 함
+  const mediaKeys = new Set(MEDIA_SETTINGS_SCHEMA.flatMap((m) => m.fields.map((f) => f.key)));
+  const generalSettings = settings.filter((s) => !mediaKeys.has(s.key));
+
+  res.render('settings', {
+    settings: generalSettings,
+    settingsMap,
+    mediaSchema: MEDIA_SETTINGS_SCHEMA,
+    saved: req.query.saved === '1',
+  });
 });
 
 app.post('/settings', requireLogin, async (req, res) => {
   const { key, value } = req.body;
   if (key) await db.setSetting(key.trim(), value || '');
+  res.redirect('/settings?saved=1');
+});
+
+app.post('/settings/media', requireLogin, async (req, res) => {
+  const { source, ...fields } = req.body;
+  const group = MEDIA_SETTINGS_SCHEMA.find((m) => m.id === source);
+  if (!group) return res.status(400).send('알 수 없는 매체입니다.');
+
+  for (const { key } of group.fields) {
+    if (fields[key] !== undefined) {
+      await db.setSetting(key, fields[key]);
+    }
+  }
   res.redirect('/settings?saved=1');
 });
 
