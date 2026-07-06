@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>로그인 - 매체 raw 허브</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="login-box card">
+    <h1>매체 raw 허브</h1>
+    <form method="POST" action="/login">
+      <label>비밀번호</label>
+      <input type="password" name="password" autofocus style="width:100%; box-sizing:border-box;">
+      <button type="submit" style="width:100%;">로그인</button>
+    </form>
+    <% if (error) { %><div class="error"><%= error %></div><% } %>
+  </div>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>설정 - 매체 raw 허브</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="top-nav">
+    <h1>설정</h1>
+    <div>
+      <a href="/">Raw 데이터</a>
+      <a href="/settings">설정</a>
+      <a href="/logout">로그아웃</a>
+    </div>
+  </div>
+
+  <% if (saved) { %><p style="color:#080;">저장되었습니다.</p><% } %>
+
+  <div class="card">
+    <table>
+      <tr><th>키</th><th>값</th><th></th></tr>
+      <% settings.forEach(s => { %>
+        <tr>
+          <form method="POST" action="/settings">
+            <td style="text-align:left;"><input type="text" name="key" value="<%= s.key %>" readonly style="border:none; background:none;"></td>
+            <td style="text-align:left;"><input type="text" name="value" value="<%= s.value %>" style="width:300px;"></td>
+            <td><button type="submit" class="secondary">저장</button></td>
+          </form>
+          <form method="POST" action="/settings/delete" style="display:inline;">
+            <input type="hidden" name="key" value="<%= s.key %>">
+            <button type="submit" class="secondary">삭제</button>
+          </form>
+        </tr>
+      <% }) %>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">새 설정 추가</h3>
+    <form method="POST" action="/settings">
+      <label>키 (예: META_ACCESS_TOKEN)</label>
+      <input type="text" name="key" style="width:300px;">
+      <label>값</label>
+      <input type="text" name="value" style="width:300px;">
+      <button type="submit">추가</button>
+    </form>
+  </div>
+</body>
+</html>

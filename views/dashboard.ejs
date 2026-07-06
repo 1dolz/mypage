@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>매체 raw 허브</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="top-nav">
+    <h1>매체 raw 허브</h1>
+    <div>
+      <a href="/">Raw 데이터</a>
+      <a href="/settings">설정</a>
+      <a href="/logout">로그아웃</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">수동 raw 업로드</h3>
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+      <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+        <div>
+          <label>매체</label>
+          <select name="source">
+            <option value="tenping">텐핑</option>
+            <option value="valista">바리스타</option>
+            <option value="appier">Appier</option>
+            <option value="asa_raw">ASA raw</option>
+            <option value="x_raw">X raw</option>
+          </select>
+        </div>
+        <div>
+          <label>CSV 파일</label>
+          <input type="file" name="file" accept=".csv" required>
+        </div>
+        <button type="submit">업로드</button>
+      </div>
+      <div class="hint">업로드하면 해당 매체의 기존 데이터를 새 파일 내용으로 교체합니다.</div>
+    </form>
+  </div>
+
+  <div class="card">
+    <form method="GET" action="/" class="filters">
+      <div>
+        <label>매체</label>
+        <select name="source">
+          <option value="">전체</option>
+          <% sources.forEach(s => { %>
+            <option value="<%= s %>" <%= filters.source === s ? 'selected' : '' %>><%= s %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label>시작일</label>
+        <input type="date" name="startDate" value="<%= filters.startDate || '' %>">
+      </div>
+      <div>
+        <label>종료일</label>
+        <input type="date" name="endDate" value="<%= filters.endDate || '' %>">
+      </div>
+      <div style="align-self:end;">
+        <button type="submit">조회</button>
+      </div>
+      <div style="align-self:end;">
+        <form method="POST" action="/run-now" style="display:inline;">
+          <button type="submit" class="secondary">지금 자동수집 실행</button>
+        </form>
+      </div>
+    </form>
+
+    <table>
+      <tr>
+        <th>날짜</th><th>매체</th><th>캠페인</th><th>광고그룹</th><th>광고명</th>
+        <th>비용</th><th>노출</th><th>클릭</th><th>설치</th>
+      </tr>
+      <% rows.forEach(r => { %>
+        <tr>
+          <td><%= r.date ? new Date(r.date).toISOString().slice(0,10) : '' %></td>
+          <td><%= r.source %></td>
+          <td><%= r.campaign_name %></td>
+          <td><%= r.adgroup_name %></td>
+          <td><%= r.ad_name %></td>
+          <td><%= Number(r.cost).toLocaleString() %></td>
+          <td><%= Number(r.impressions).toLocaleString() %></td>
+          <td><%= Number(r.clicks).toLocaleString() %></td>
+          <td><%= Number(r.installs).toLocaleString() %></td>
+        </tr>
+      <% }) %>
+    </table>
+    <% if (rows.length === 0) { %><p class="hint">데이터가 없습니다.</p><% } %>
+  </div>
+</body>
+</html>
