@@ -3,6 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const { parse } = require('csv-parse/sync');
+const XLSX = require('xlsx');
 const cron = require('node-cron');
 
 const db = require('./db');
@@ -64,8 +65,21 @@ app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
     }
     if (!req.file) return res.status(400).send('파일이 없습니다.');
 
-    const text = req.file.buffer.toString('utf-8');
-    const records = parse(text, { columns: true, skip_empty_lines: true, trim: true });
+    const filename = req.file.originalname || '';
+    const ext = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
+
+    let records;
+    if (ext === 'xlsx' || ext === 'xls') {
+      // 엑셀 파일: 첫 번째 시트를 헤더 기준 객체 배열로 변환
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const firstSheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[firstSheetName];
+      records = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+    } else {
+      // CSV 파일 (기본값)
+      const text = req.file.buffer.toString('utf-8');
+      records = parse(text, { columns: true, skip_empty_lines: true, trim: true });
+    }
 
     // 매체별 컬럼 매핑은 다음 단계에서 채워 넣을 예정 (지금은 원본 그대로 저장)
     const rows = records.map((r) => ({
