@@ -7,6 +7,7 @@ const XLSX = require('xlsx');
 const cron = require('node-cron');
 
 const db = require('./db');
+const { fetchMetaAds } = require('./fetchers/meta');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -120,10 +121,17 @@ app.post('/settings/delete', requireLogin, async (req, res) => {
   res.redirect('/settings?saved=1');
 });
 
-// ===== 매체별 자동 수집 함수 자리 (다음 단계에서 채워 넣을 예정) =====
+// ===== 매체별 자동 수집 함수 자리 (순서대로 채워 넣는 중) =====
 async function runAllFetchers() {
-  console.log('[cron] 매체 자동 수집 시작 (아직 구현 전)');
-  // TODO: fetchMeta(), fetchTikTok(), fetchGoogleAds(), fetchAdpopcorn() 등을 여기서 순서대로 호출
+  console.log('[cron] 매체 자동 수집 시작');
+
+  try {
+    await fetchMetaAds();
+  } catch (err) {
+    console.error('[cron] Meta 수집 실패:', err.message);
+  }
+
+  // TODO: fetchTikTok(), fetchGoogleAds(), fetchAdpopcorn() 등을 여기서 순서대로 호출
 }
 
 // 매일 오전 9시 (Asia/Seoul) 자동 실행
