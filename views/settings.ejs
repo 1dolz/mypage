@@ -94,6 +94,20 @@
           </form>
         </div>
       <% } %>
+
+      <% if (m.id === 'tiktok') { %>
+        <div class="card">
+          <h3 style="margin-top:0;">Access Token 발급 (최초 1회)</h3>
+          <div class="hint">
+            위에서 App ID / Secret / Auth Code를 먼저 저장한 뒤 아래 버튼을 누르면
+            Access Token과 Advertiser ID가 자동으로 발급되어 저장됩니다.
+            Auth Code는 1회용이라 실패하면 TikTok에서 새로 발급받아 다시 저장 후 시도하세요.
+          </div>
+          <form method="POST" action="/settings/tiktok/exchange-code">
+            <button type="submit" class="secondary">Access Token 발급</button>
+          </form>
+        </div>
+      <% } %>
     </div>
   <% }) %>
 

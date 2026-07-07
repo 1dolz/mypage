@@ -10,6 +10,7 @@ const cron = require('node-cron');
 const db = require('./db');
 const { fetchMetaAds } = require('./fetchers/meta');
 const { fetchGoogleBranding, exchangeAuthCodeForRefreshToken } = require('./fetchers/googleAds');
+const { fetchTikTokAds, exchangeAuthCodeForAccessToken: exchangeTikTokAuthCode } = require('./fetchers/tiktok');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -200,6 +201,17 @@ const MEDIA_SETTINGS_SCHEMA = [
       { key: 'GOOGLE_REFRESH_TOKEN', label: 'Refresh Token', type: 'password' },
     ],
   },
+  {
+    id: 'tiktok',
+    label: 'TikTok',
+    fields: [
+      { key: 'TIKTOK_APP_ID', label: 'App ID' },
+      { key: 'TIKTOK_APP_SECRET', label: 'Secret', type: 'password' },
+      { key: 'TIKTOK_AUTH_CODE', label: 'Auth Code (최초 발급용, 1회용)', type: 'password' },
+      { key: 'TIKTOK_ACCESS_TOKEN', label: 'Access Token', type: 'password' },
+      { key: 'TIKTOK_ADVERTISER_ID', label: 'Advertiser ID' },
+    ],
+  },
 ];
 
 app.get('/settings', requireLogin, async (req, res) => {
@@ -269,6 +281,26 @@ app.post('/settings/google-ads/exchange-code', requireLogin, async (req, res) =>
   }
 });
 
+// TikTok Access Token 최초 발급 (App ID/Secret/Auth Code → Access Token + Advertiser ID 교환)
+app.post('/settings/tiktok/exchange-code', requireLogin, async (req, res) => {
+  try {
+    const appId = await db.getSetting('TIKTOK_APP_ID');
+    const secret = await db.getSetting('TIKTOK_APP_SECRET');
+    const authCode = await db.getSetting('TIKTOK_AUTH_CODE');
+
+    if (!appId || !secret || !authCode) {
+      return res.status(400).send('App ID / Secret / Auth Code를 먼저 저장해주세요.');
+    }
+
+    const { accessToken, advertiserId } = await exchangeTikTokAuthCode({ appId, secret, authCode });
+    await db.setSetting('TIKTOK_ACCESS_TOKEN', accessToken);
+    if (advertiserId) await db.setSetting('TIKTOK_ADVERTISER_ID', advertiserId);
+    res.redirect('/settings?saved=1');
+  } catch (err) {
+    res.status(500).send('TikTok Access Token 발급 실패: ' + err.message);
+  }
+});
+
 // ===== 매체별 자동 수집 함수 자리 (순서대로 채워 넣는 중) =====
 async function runAllFetchers() {
   console.log('[cron] 매체 자동 수집 시작');
@@ -285,7 +317,13 @@ async function runAllFetchers() {
     console.error('[cron] Google Ads 수집 실패:', err.message);
   }
 
-  // TODO: fetchTikTok(), fetchAdpopcorn() 등을 여기서 순서대로 호출
+  try {
+    await fetchTikTokAds();
+  } catch (err) {
+    console.error('[cron] TikTok 수집 실패:', err.message);
+  }
+
+  // TODO: fetchAdpopcorn() 등을 여기서 순서대로 호출
 }
 
 // 매일 오전 9시 (Asia/Seoul) 자동 실행
