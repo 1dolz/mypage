@@ -65,7 +65,11 @@
           <% m.fields.forEach(f => { %>
             <div class="field-row">
               <label><%= f.label %></label>
-              <input type="<%= f.type || 'text' %>" name="<%= f.key %>" value="<%= settingsMap[f.key] || '' %>">
+              <% if (f.type === 'textarea') { %>
+                <textarea name="<%= f.key %>" rows="8" style="width:100%; max-width:480px; box-sizing:border-box; font-family:monospace; font-size:12px;"><%= settingsMap[f.key] || '' %></textarea>
+              <% } else { %>
+                <input type="<%= f.type || 'text' %>" name="<%= f.key %>" value="<%= settingsMap[f.key] || '' %>">
+              <% } %>
             </div>
           <% }) %>
           <button type="submit">저장</button>

@@ -82,25 +82,27 @@
       <button type="submit" class="secondary">선택 매체 데이터 삭제</button>
     </form>
 
-    <table>
-      <tr>
-        <th>날짜</th><th>매체</th><th>캠페인</th><th>광고그룹</th><th>광고명</th>
-        <th>비용</th><th>노출</th><th>클릭</th><th>설치</th>
-      </tr>
-      <% rows.forEach(r => { %>
+    <div class="table-wrap">
+      <table>
         <tr>
-          <td><%= r.date ? new Date(r.date).toISOString().slice(0,10) : '' %></td>
-          <td><%= r.source %></td>
-          <td><%= r.campaign_name %></td>
-          <td><%= r.adgroup_name %></td>
-          <td><%= r.ad_name %></td>
-          <td><%= Number(r.cost).toLocaleString() %></td>
-          <td><%= Number(r.impressions).toLocaleString() %></td>
-          <td><%= Number(r.clicks).toLocaleString() %></td>
-          <td><%= Number(r.installs).toLocaleString() %></td>
+          <th>날짜</th><th>매체</th><th>캠페인</th><th>광고그룹</th><th>광고명</th>
+          <th>비용</th><th>노출</th><th>클릭</th><th>설치</th>
         </tr>
-      <% }) %>
-    </table>
+        <% rows.forEach(r => { %>
+          <tr>
+            <td><%= r.date ? new Date(r.date).toISOString().slice(0,10) : '' %></td>
+            <td><%= r.source %></td>
+            <td><%= r.campaign_name %></td>
+            <td><%= r.adgroup_name %></td>
+            <td><%= r.ad_name %></td>
+            <td><%= Number(r.cost).toLocaleString() %></td>
+            <td><%= Number(r.impressions).toLocaleString() %></td>
+            <td><%= Number(r.clicks).toLocaleString() %></td>
+            <td><%= Number(r.installs).toLocaleString() %></td>
+          </tr>
+        <% }) %>
+      </table>
+    </div>
     <% if (rows.length === 0) { %><p class="hint">데이터가 없습니다.</p><% } %>
   </div>
 </body>

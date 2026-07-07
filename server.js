@@ -11,6 +11,7 @@ const db = require('./db');
 const { fetchMetaAds } = require('./fetchers/meta');
 const { fetchGoogleBranding, exchangeAuthCodeForRefreshToken } = require('./fetchers/googleAds');
 const { fetchTikTokAds, exchangeAuthCodeForAccessToken: exchangeTikTokAuthCode } = require('./fetchers/tiktok');
+const { fetchAppleAds } = require('./fetchers/appleAds');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -212,6 +213,17 @@ const MEDIA_SETTINGS_SCHEMA = [
       { key: 'TIKTOK_ADVERTISER_ID', label: 'Advertiser ID' },
     ],
   },
+  {
+    id: 'apple',
+    label: 'Apple',
+    fields: [
+      { key: 'APPLE_CLIENT_ID', label: 'Client ID' },
+      { key: 'APPLE_TEAM_ID', label: 'Team ID' },
+      { key: 'APPLE_KEY_ID', label: 'Key ID' },
+      { key: 'APPLE_ORG_ID', label: 'Org ID' },
+      { key: 'APPLE_PRIVATE_KEY', label: 'Private Key (.p8 파일 내용 전체)', type: 'textarea' },
+    ],
+  },
 ];
 
 app.get('/settings', requireLogin, async (req, res) => {
@@ -321,6 +333,12 @@ async function runAllFetchers() {
     await fetchTikTokAds();
   } catch (err) {
     console.error('[cron] TikTok 수집 실패:', err.message);
+  }
+
+  try {
+    await fetchAppleAds();
+  } catch (err) {
+    console.error('[cron] Apple Search Ads 수집 실패:', err.message);
   }
 
   // TODO: fetchAdpopcorn() 등을 여기서 순서대로 호출
