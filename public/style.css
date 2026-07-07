@@ -22,8 +22,9 @@ button {
 button.secondary { background: #eee; color: #111; }
 button:hover { opacity: 0.85; }
 
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: right; }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: right; word-wrap: break-word; overflow-wrap: break-word; }
 th:nth-child(-n+4), td:nth-child(-n+4) { text-align: left; }
 th { background: #f5f5f5; position: sticky; top: 0; }
 tr:hover { background: #fafafa; }
