@@ -72,6 +72,28 @@
         </form>
         <div class="hint">여기 입력한 값은 자동수집(cron) 및 "지금 자동수집 실행"에서 사용됩니다.</div>
       </div>
+
+      <% if (m.id === 'google_ads') { %>
+        <div class="card">
+          <h3 style="margin-top:0;">Refresh Token 발급 (최초 1회)</h3>
+          <div class="hint">
+            아직 Refresh Token이 없다면: 먼저 위에서 Client ID / Client Secret을 저장한 뒤,
+            아래 링크를 새 탭에서 열어 구글 계정으로 로그인/동의하면 인증 코드가 화면에 표시됩니다.
+            그 코드를 복사해서 아래 입력창에 넣고 "발급"을 누르세요.
+          </div>
+          <p>
+            <a
+              href="https://accounts.google.com/o/oauth2/auth?client_id=<%= encodeURIComponent(settingsMap.GOOGLE_CLIENT_ID || '') %>&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/adwords&access_type=offline&prompt=consent"
+              target="_blank"
+            >인증 URL 열기</a>
+          </p>
+          <form method="POST" action="/settings/google-ads/exchange-code">
+            <label>인증 코드</label>
+            <input type="text" name="authCode" style="width:400px;">
+            <button type="submit" class="secondary">발급</button>
+          </form>
+        </div>
+      <% } %>
     </div>
   <% }) %>
 

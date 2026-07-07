@@ -9,6 +9,7 @@ const cron = require('node-cron');
 
 const db = require('./db');
 const { fetchMetaAds } = require('./fetchers/meta');
+const { fetchGoogleBranding, exchangeAuthCodeForRefreshToken } = require('./fetchers/googleAds');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -125,6 +126,18 @@ const MEDIA_SETTINGS_SCHEMA = [
       { key: 'META_ACCESS_TOKEN', label: 'Access Token', type: 'password' },
     ],
   },
+  {
+    id: 'google_ads',
+    label: 'Google Ads',
+    fields: [
+      { key: 'GOOGLE_DEVELOPER_TOKEN', label: 'Developer Token', type: 'password' },
+      { key: 'GOOGLE_CLIENT_ID', label: 'Client ID' },
+      { key: 'GOOGLE_CLIENT_SECRET', label: 'Client Secret', type: 'password' },
+      { key: 'GOOGLE_CUSTOMER_ID', label: 'Customer ID' },
+      { key: 'GOOGLE_MCC_ID', label: 'MCC ID' },
+      { key: 'GOOGLE_REFRESH_TOKEN', label: 'Refresh Token', type: 'password' },
+    ],
+  },
 ];
 
 app.get('/settings', requireLogin, async (req, res) => {
@@ -172,6 +185,28 @@ app.post('/settings/delete', requireLogin, async (req, res) => {
   res.redirect('/settings?saved=1');
 });
 
+// Google Ads Refresh Token 최초 발급 (OAuth 인증 코드 → Refresh Token 교환)
+app.post('/settings/google-ads/exchange-code', requireLogin, async (req, res) => {
+  try {
+    const clientId = await db.getSetting('GOOGLE_CLIENT_ID');
+    const clientSecret = await db.getSetting('GOOGLE_CLIENT_SECRET');
+    const { authCode } = req.body;
+
+    if (!clientId || !clientSecret) {
+      return res.status(400).send('먼저 Client ID / Client Secret을 저장해주세요.');
+    }
+    if (!authCode) {
+      return res.status(400).send('인증 코드를 입력해주세요.');
+    }
+
+    const refreshToken = await exchangeAuthCodeForRefreshToken({ clientId, clientSecret, authCode });
+    await db.setSetting('GOOGLE_REFRESH_TOKEN', refreshToken);
+    res.redirect('/settings?saved=1');
+  } catch (err) {
+    res.status(500).send('Refresh Token 발급 실패: ' + err.message);
+  }
+});
+
 // ===== 매체별 자동 수집 함수 자리 (순서대로 채워 넣는 중) =====
 async function runAllFetchers() {
   console.log('[cron] 매체 자동 수집 시작');
@@ -182,7 +217,13 @@ async function runAllFetchers() {
     console.error('[cron] Meta 수집 실패:', err.message);
   }
 
-  // TODO: fetchTikTok(), fetchGoogleAds(), fetchAdpopcorn() 등을 여기서 순서대로 호출
+  try {
+    await fetchGoogleBranding();
+  } catch (err) {
+    console.error('[cron] Google Ads 수집 실패:', err.message);
+  }
+
+  // TODO: fetchTikTok(), fetchAdpopcorn() 등을 여기서 순서대로 호출
 }
 
 // 매일 오전 9시 (Asia/Seoul) 자동 실행
