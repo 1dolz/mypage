@@ -64,6 +64,68 @@ app.get('/', requireLogin, async (req, res) => {
   res.render('dashboard', { rows, sources, filters: { source, startDate, endDate } });
 });
 
+// 특정 매체의 raw 데이터를 통째로 삭제 (테스트 데이터/이름 바뀐 매체 정리용)
+app.post('/delete-source', requireLogin, async (req, res) => {
+  const { source } = req.body;
+  if (source) {
+    await db.pool.query('DELETE FROM raw_data WHERE source = $1', [source]);
+  }
+  res.redirect('/');
+});
+
+// ===== 조회 결과 내보내기 (CSV / Excel) =====
+function buildExportRows(rows) {
+  const headers = ['날짜', '매체', '캠페인', '광고그룹', '광고명', '비용', '노출', '클릭', '설치'];
+  const dataRows = rows.map((r) => [
+    r.date ? new Date(r.date).toISOString().slice(0, 10) : '',
+    r.source,
+    r.campaign_name,
+    r.adgroup_name,
+    r.ad_name,
+    Number(r.cost) || 0,
+    Number(r.impressions) || 0,
+    Number(r.clicks) || 0,
+    Number(r.installs) || 0,
+  ]);
+  return { headers, dataRows };
+}
+
+function toCsvValue(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+app.get('/export.csv', requireLogin, async (req, res) => {
+  const { source, startDate, endDate } = req.query;
+  const rows = await db.queryRawData({ source, startDate, endDate, limit: 50000 });
+  const { headers, dataRows } = buildExportRows(rows);
+
+  const lines = [headers, ...dataRows].map((row) => row.map(toCsvValue).join(','));
+  const BOM = '﻿'; // 엑셀에서 한글 깨짐 방지
+  const csv = BOM + lines.join('\r\n');
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="raw_data_${Date.now()}.csv"`);
+  res.send(csv);
+});
+
+app.get('/export.xlsx', requireLogin, async (req, res) => {
+  const { source, startDate, endDate } = req.query;
+  const rows = await db.queryRawData({ source, startDate, endDate, limit: 50000 });
+  const { headers, dataRows } = buildExportRows(rows);
+
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'raw_data');
+  const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="raw_data_${Date.now()}.xlsx"`);
+  res.send(buffer);
+});
+
 // ===== 수동 raw 업로드 =====
 const MANUAL_SOURCES = ['tenping', 'valista', 'appier', 'asa_raw', 'x_raw'];
 

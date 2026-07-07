@@ -193,7 +193,7 @@ async function fetchGoogleBranding() {
     };
   });
 
-  await db.replaceSourceData('google_branding', rows);
+  await db.replaceSourceData('google', rows);
   console.log(`[google_ads] 완료: ${rows.length}개 행 저장 (${startDate} ~ ${endDate})`);
 }
 

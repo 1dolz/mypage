@@ -61,9 +61,25 @@
       <div style="align-self:end;">
         <button type="submit">조회</button>
       </div>
+      <div style="align-self:end;">
+        <button type="submit" class="secondary" formaction="/export.csv" formtarget="_blank">CSV로 내보내기</button>
+      </div>
+      <div style="align-self:end;">
+        <button type="submit" class="secondary" formaction="/export.xlsx" formtarget="_blank">Excel로 내보내기</button>
+      </div>
     </form>
     <form method="POST" action="/run-now" style="display:inline;">
       <button type="submit" class="secondary">지금 자동수집 실행</button>
+    </form>
+
+    <form method="POST" action="/delete-source" style="display:inline; margin-left:8px;"
+      onsubmit="return confirm('선택한 매체의 raw 데이터를 전부 삭제합니다. 계속할까요?');">
+      <select name="source">
+        <% sources.forEach(s => { %>
+          <option value="<%= s %>"><%= s %></option>
+        <% }) %>
+      </select>
+      <button type="submit" class="secondary">선택 매체 데이터 삭제</button>
     </form>
 
     <table>
