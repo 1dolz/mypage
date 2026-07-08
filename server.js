@@ -243,11 +243,18 @@ app.get('/settings', requireLogin, async (req, res) => {
 
   const manualSources = await db.getManualSources();
 
+  // 수동 업로드 매체 탭에서 선택된 매체 (드롭다운으로 고름). 없으면 첫 번째 매체, 그것도 없으면 "새 매체 추가" 상태.
+  const selectedManualId =
+    req.query.manualId !== undefined ? req.query.manualId : manualSources[0] ? manualSources[0].id : 'new';
+  const selectedManual = manualSources.find((m) => m.id === selectedManualId) || null;
+
   res.render('settings', {
     settings: generalSettings,
     settingsMap,
     mediaSchema: MEDIA_SETTINGS_SCHEMA,
     manualSources,
+    selectedManualId,
+    selectedManual,
     saved: req.query.saved === '1',
   });
 });
@@ -286,13 +293,13 @@ app.post('/settings/manual-sources', requireLogin, async (req, res) => {
     ad_name_prefix: ad_name_prefix || '',
   });
 
-  res.redirect('/settings?saved=1');
+  res.redirect(`/settings?manualId=${encodeURIComponent(cleanId)}&saved=1#tab-manual`);
 });
 
 app.post('/settings/manual-sources/delete', requireLogin, async (req, res) => {
   const { id } = req.body;
   if (id) await db.deleteManualSource(id);
-  res.redirect('/settings?saved=1');
+  res.redirect('/settings?saved=1#tab-manual');
 });
 
 app.post('/settings', requireLogin, async (req, res) => {

@@ -65,33 +65,21 @@ async function initDb() {
     );
   }
 
-  // 기존에 하드코딩돼있던 수동 업로드 매체들을 manual_sources 테이블 기본값으로 이전
-  const GENERIC_FIELD_MAP = {
-    date: 'Date,날짜,Time period',
-    campaign_name: 'Campaign,캠페인,Campaign Name',
-    adgroup_name: 'Ad group,광고그룹,Ad Group Name',
-    ad_name: 'Ad name,광고명,Creative name',
-    cost: 'Spend,비용',
-    impressions: 'Impressions,노출',
-    clicks: 'Clicks,클릭',
-    installs: 'Installs,설치,Actions',
-  };
-
+  // 기존에 하드코딩돼있던 수동 업로드 매체들을 manual_sources 테이블 기본값으로 이전.
+  // field_map은 이제 "재정의"만 저장하면 됨 - 지정 안 한 필드는 lib/manualUpload.js의
+  // DEFAULT_FIELD_MAP(일반적인 컬럼명들)을 자동으로 시도하기 때문에 대부분 빈 값으로 둬도 됨.
   const seedManualSources = [
-    { id: 'tenping', label: '텐핑', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
-    { id: 'appier', label: 'Appier', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
-    { id: 'valista', label: '바리스타', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
-    { id: 'tradingworks', label: '트레이딩웍스', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    { id: 'tenping', label: '텐핑', field_map: {}, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    { id: 'appier', label: 'Appier', field_map: {}, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    { id: 'valista', label: '바리스타', field_map: {}, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    { id: 'tradingworks', label: '트레이딩웍스', field_map: {}, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
     {
+      // date/campaign_name/adgroup_name/cost/impressions는 기본 컬럼명(Date, Campaign Name,
+      // Ad Group Name, Spend, Impressions)과 이미 일치해서 재정의가 필요 없음.
       id: 'apple',
       label: 'Apple',
       field_map: {
-        date: 'Date',
-        campaign_name: 'Campaign Name',
-        adgroup_name: 'Ad Group Name',
         ad_name: 'Keyword',
-        cost: 'Spend',
-        impressions: 'Impressions',
         clicks: 'Taps',
         installs: 'Installs (Total)',
       },
@@ -99,7 +87,7 @@ async function initDb() {
       apply_margin_rate: true,
       ad_name_prefix: 'keyword_',
     },
-    { id: 'x', label: 'X', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    { id: 'x', label: 'X', field_map: {}, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
   ];
 
   for (const s of seedManualSources) {

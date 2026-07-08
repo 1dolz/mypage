@@ -70,82 +70,94 @@
     ];
   %>
 
+  <%
+    const isNewManual = !selectedManual;
+    const editingManual = selectedManual || { id: '', label: '', field_map: {}, ad_name_prefix: '', cost_multiplier: 1, apply_margin_rate: false };
+    const overriddenKeys = new Set(
+      manualFieldDefs.filter((f) => editingManual.field_map && editingManual.field_map[f.key]).map((f) => f.key)
+    );
+  %>
+
   <div id="tab-manual" class="tab-content">
     <div class="hint" style="margin-bottom:14px;">
       여기서 등록한 매체는 Raw 데이터 화면의 "수동 raw 업로드" 드롭다운에 자동으로 나타납니다.
-      컬럼명은 업로드할 파일의 실제 헤더명을 넣으면 되고, 여러 개가 있을 수 있으면 쉼표(,)로 구분해서 여러 개 적어도 됩니다
-      (예: <code>Campaign,캠페인,Campaign Name</code>). 표 위에 다른 줄이 섞여 있어도 헤더 행을 자동으로 찾습니다.
+      대부분의 컬럼(날짜/캠페인/광고그룹/광고명/비용/노출/클릭/설치)은 흔한 이름(Date, Campaign, Spend 등)을 자동으로 시도하기 때문에
+      실제 파일의 헤더명이 다른 항목만 아래에서 재정의하면 됩니다.
     </div>
 
-    <% manualSources.forEach(m => { %>
-      <div class="card">
-        <h4 style="margin-top:0;"><%= m.label %> <span class="hint">(id: <%= m.id %>)</span></h4>
-        <form method="POST" action="/settings/manual-sources">
-          <input type="hidden" name="id" value="<%= m.id %>">
-          <div class="field-row">
-            <label>표시명</label>
-            <input type="text" name="label" value="<%= m.label %>">
-          </div>
-          <% manualFieldDefs.forEach(f => { %>
-            <div class="field-row">
-              <label><%= f.label %> 컬럼명 (쉼표로 여러 개 가능)</label>
-              <input type="text" name="field_<%= f.key %>" value="<%= (m.field_map && m.field_map[f.key]) || '' %>">
-            </div>
-          <% }) %>
-          <div class="field-row">
-            <label>광고명 앞에 붙일 접두어 (선택, 예: keyword_)</label>
-            <input type="text" name="ad_name_prefix" value="<%= m.ad_name_prefix || '' %>">
-          </div>
-          <div class="field-row">
-            <label>비용에 곱할 배수 (환율 등, 기본 1)</label>
-            <input type="number" step="any" name="cost_multiplier" value="<%= m.cost_multiplier != null ? m.cost_multiplier : 1 %>">
-          </div>
-          <div class="field-row">
-            <label>
-              <input type="checkbox" name="apply_margin_rate" value="1" <%= m.apply_margin_rate ? 'checked' : '' %>>
-              마진율(MARGIN_RATE) 나누기 적용
-            </label>
-          </div>
-          <button type="submit">저장</button>
-        </form>
-        <form method="POST" action="/settings/manual-sources/delete" style="display:inline;"
-          onsubmit="return confirm('삭제하면 업로드 드롭다운에서 사라집니다. 이미 업로드된 raw 데이터는 남아있습니다. 계속할까요?');">
-          <input type="hidden" name="id" value="<%= m.id %>">
-          <button type="submit" class="secondary">삭제</button>
-        </form>
-      </div>
-    <% }) %>
+    <div class="card">
+      <label>매체 선택</label>
+      <select id="manual-source-select" style="width:100%; max-width:300px;">
+        <% manualSources.forEach(m => { %>
+          <option value="<%= m.id %>" <%= selectedManualId === m.id ? 'selected' : '' %>><%= m.label %></option>
+        <% }) %>
+        <option value="new" <%= isNewManual ? 'selected' : '' %>>+ 새 매체 추가</option>
+      </select>
+    </div>
 
     <div class="card">
-      <h3 style="margin-top:0;">새 매체 추가</h3>
+      <h4 style="margin-top:0;">
+        <%= isNewManual ? '새 매체 추가' : (editingManual.label + ' 설정') %>
+        <% if (!isNewManual) { %><span class="hint">(id: <%= editingManual.id %>)</span><% } %>
+      </h4>
       <form method="POST" action="/settings/manual-sources">
-        <div class="field-row">
-          <label>매체 ID (영문/숫자/언더스코어, 예: tradingworks)</label>
-          <input type="text" name="id" style="width:300px;">
-        </div>
+        <% if (isNewManual) { %>
+          <div class="field-row">
+            <label>매체 ID (영문/숫자/언더스코어, 예: tradingworks)</label>
+            <input type="text" name="id" style="width:300px;" required>
+          </div>
+        <% } else { %>
+          <input type="hidden" name="id" value="<%= editingManual.id %>">
+        <% } %>
         <div class="field-row">
           <label>표시명</label>
-          <input type="text" name="label" style="width:300px;">
+          <input type="text" name="label" value="<%= editingManual.label %>" style="width:300px;">
         </div>
-        <% manualFieldDefs.forEach(f => { %>
-          <div class="field-row">
-            <label><%= f.label %> 컬럼명 (쉼표로 여러 개 가능)</label>
-            <input type="text" name="field_<%= f.key %>">
-          </div>
-        <% }) %>
+
         <div class="field-row">
-          <label>광고명 앞에 붙일 접두어 (선택)</label>
-          <input type="text" name="ad_name_prefix">
+          <label>컬럼 매핑 재정의 <span class="hint">(실제 파일의 헤더명이 기본값과 다를 때만 지정. 지정한 값이 우선 적용됨)</span></label>
+          <div id="override-rows">
+            <% manualFieldDefs.forEach(f => { %>
+              <% const val = (editingManual.field_map && editingManual.field_map[f.key]) || ''; %>
+              <div class="override-row" data-key="<%= f.key %>" style="display:<%= val ? 'flex' : 'none' %>; gap:8px; align-items:center; margin-bottom:6px;">
+                <span style="width:80px; font-size:13px; color:#555; flex-shrink:0;"><%= f.label %></span>
+                <input type="text" name="field_<%= f.key %>" value="<%= val %>" style="flex:1;" placeholder="쉼표로 여러 개 가능">
+                <button type="button" class="secondary remove-override-btn" data-key="<%= f.key %>">제거</button>
+              </div>
+            <% }) %>
+          </div>
+          <select id="add-override-select" style="margin-top:6px;">
+            <option value="">+ 재정의할 컬럼 선택</option>
+            <% manualFieldDefs.filter(f => !overriddenKeys.has(f.key)).forEach(f => { %>
+              <option value="<%= f.key %>"><%= f.label %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <label>광고명 앞에 붙일 접두어 (선택, 예: keyword_)</label>
+          <input type="text" name="ad_name_prefix" value="<%= editingManual.ad_name_prefix || '' %>">
         </div>
         <div class="field-row">
           <label>비용에 곱할 배수 (환율 등, 기본 1)</label>
-          <input type="number" step="any" name="cost_multiplier" value="1">
+          <input type="number" step="any" name="cost_multiplier" value="<%= editingManual.cost_multiplier != null ? editingManual.cost_multiplier : 1 %>">
         </div>
         <div class="field-row">
-          <label><input type="checkbox" name="apply_margin_rate" value="1"> 마진율(MARGIN_RATE) 나누기 적용</label>
+          <label>
+            <input type="checkbox" name="apply_margin_rate" value="1" <%= editingManual.apply_margin_rate ? 'checked' : '' %>>
+            마진율(MARGIN_RATE) 나누기 적용
+          </label>
         </div>
-        <button type="submit">추가</button>
+        <button type="submit"><%= isNewManual ? '추가' : '저장' %></button>
       </form>
+
+      <% if (!isNewManual) { %>
+        <form method="POST" action="/settings/manual-sources/delete" style="display:inline;"
+          onsubmit="return confirm('삭제하면 업로드 드롭다운에서 사라집니다. 이미 업로드된 raw 데이터는 남아있습니다. 계속할까요?');">
+          <input type="hidden" name="id" value="<%= editingManual.id %>">
+          <button type="submit" class="secondary">삭제</button>
+        </form>
+      <% } %>
     </div>
   </div>
 
@@ -215,6 +227,47 @@
         document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // URL에 #tab-xxx 해시가 있으면 그 탭을 기본으로 활성화 (매체 선택 드롭다운에서 넘어올 때 사용)
+    (function () {
+      const hashTab = (location.hash || '').replace('#tab-', '');
+      if (!hashTab) return;
+      const targetBtn = document.querySelector('.tab-btn[data-tab="' + hashTab + '"]');
+      if (targetBtn) targetBtn.click();
+    })();
+
+    // 수동 업로드 매체 선택 드롭다운: 다른 매체를 고르면 해당 매체 설정으로 다시 로드
+    const manualSelect = document.getElementById('manual-source-select');
+    if (manualSelect) {
+      manualSelect.addEventListener('change', (e) => {
+        window.location.href = '/settings?manualId=' + encodeURIComponent(e.target.value) + '#tab-manual';
+      });
+    }
+
+    // 컬럼 매핑 재정의 행 추가/제거 (선택한 컬럼의 입력창만 보여줌)
+    const addOverrideSelect = document.getElementById('add-override-select');
+    if (addOverrideSelect) {
+      addOverrideSelect.addEventListener('change', (e) => {
+        const key = e.target.value;
+        if (!key) return;
+        const row = document.querySelector('.override-row[data-key="' + key + '"]');
+        if (row) {
+          row.style.display = 'flex';
+          const input = row.querySelector('input[type="text"]');
+          if (input) input.focus();
+        }
+        e.target.value = '';
+      });
+    }
+
+    document.querySelectorAll('.remove-override-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const row = btn.closest('.override-row');
+        const input = row.querySelector('input[type="text"]');
+        if (input) input.value = '';
+        row.style.display = 'none';
       });
     });
   </script>
