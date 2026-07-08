@@ -25,11 +25,15 @@ button:hover { opacity: 0.85; }
 .table-wrap { overflow-x: auto; max-width: 100%; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: right; word-wrap: break-word; overflow-wrap: break-word; }
-th:nth-child(-n+4), td:nth-child(-n+4) { text-align: left; }
+th:nth-child(-n+5), td:nth-child(-n+5) { text-align: left; }
 th { background: #f5f5f5; position: sticky; top: 0; }
 tr:hover { background: #fafafa; }
 
 .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+
+.col-toggles { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 0 10px; }
+.col-toggle-label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #555; margin: 0; }
+.col-toggle-label input { margin: 0; }
 
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #e5e5e5; }
 .tab-btn {
