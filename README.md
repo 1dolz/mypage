@@ -15,7 +15,7 @@
 3. 같은 프로젝트 안에서 New → Database → Add PostgreSQL 클릭 (DATABASE_URL이 자동으로 앱에 연결됩니다)
 4. 앱 서비스 클릭 → Variables 탭 → 아래 두 개 추가
    - `ADMIN_PASSWORD` = 원하는 로그인 비밀번호
-   - `SESSION_SECRET` = 아무 임의의 긴 문자열 (mypage_jos_secret)
+   - `SESSION_SECRET` = 아무 임의의 긴 문자열
 5. Settings 탭 → Networking → "Generate Domain" 클릭 → 나온 주소로 접속
 
 접속해서 `ADMIN_PASSWORD`로 로그인하면 화면이 뜹니다. 설정 메뉴에서 API 토큰들을 하나씩 등록해두시면 다음 단계(매체별 자동 수집)에서 그대로 사용합니다.
