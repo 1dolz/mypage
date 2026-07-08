@@ -14,7 +14,7 @@
 2. New Project → Deploy from GitHub repo → 방금 만든 저장소 선택
 3. 같은 프로젝트 안에서 New → Database → Add PostgreSQL 클릭 (DATABASE_URL이 자동으로 앱에 연결됩니다)
 4. 앱 서비스 클릭 → Variables 탭 → 아래 두 개 추가
-   - `ADMIN_PASSWORD` = 원하는 로그인 비밀번호 (7548)
+   - `ADMIN_PASSWORD` = 원하는 로그인 비밀번호
    - `SESSION_SECRET` = 아무 임의의 긴 문자열 (mypage_jos_secret)
 5. Settings 탭 → Networking → "Generate Domain" 클릭 → 나온 주소로 접속
 
