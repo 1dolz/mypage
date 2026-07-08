@@ -41,11 +41,22 @@ async function initDb() {
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_raw_data_source_date ON raw_data(source, date);`);
 
+  // 수동 raw 업로드 매체 목록 + 컬럼 매핑 (하드코딩 대신 /settings 화면에서 추가/수정/삭제 가능)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS manual_sources (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      field_map JSONB NOT NULL DEFAULT '{}',
+      cost_multiplier NUMERIC DEFAULT 1,
+      apply_margin_rate BOOLEAN DEFAULT false,
+      ad_name_prefix TEXT DEFAULT ''
+    );
+  `);
+
   // 기본 설정값이 없으면 채워둠
   const defaults = {
     DELIMITER: '_',
     MARGIN_RATE: '0.85',
-    ASA_EXCHANGE_RATE: '1500',
   };
   for (const [key, value] of Object.entries(defaults)) {
     await pool.query(
@@ -53,6 +64,84 @@ async function initDb() {
       [key, value]
     );
   }
+
+  // 기존에 하드코딩돼있던 수동 업로드 매체들을 manual_sources 테이블 기본값으로 이전
+  const GENERIC_FIELD_MAP = {
+    date: 'Date,날짜,Time period',
+    campaign_name: 'Campaign,캠페인,Campaign Name',
+    adgroup_name: 'Ad group,광고그룹,Ad Group Name',
+    ad_name: 'Ad name,광고명,Creative name',
+    cost: 'Spend,비용',
+    impressions: 'Impressions,노출',
+    clicks: 'Clicks,클릭',
+    installs: 'Installs,설치,Actions',
+  };
+
+  const seedManualSources = [
+    { id: 'tenping', label: '텐핑', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    { id: 'appier', label: 'Appier', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    { id: 'valista', label: '바리스타', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    { id: 'tradingworks', label: '트레이딩웍스', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+    {
+      id: 'apple',
+      label: 'Apple',
+      field_map: {
+        date: 'Date',
+        campaign_name: 'Campaign Name',
+        adgroup_name: 'Ad Group Name',
+        ad_name: 'Keyword',
+        cost: 'Spend',
+        impressions: 'Impressions',
+        clicks: 'Taps',
+        installs: 'Installs (Total)',
+      },
+      cost_multiplier: 1500,
+      apply_margin_rate: true,
+      ad_name_prefix: 'keyword_',
+    },
+    { id: 'x', label: 'X', field_map: GENERIC_FIELD_MAP, cost_multiplier: 1, apply_margin_rate: false, ad_name_prefix: '' },
+  ];
+
+  for (const s of seedManualSources) {
+    await pool.query(
+      `INSERT INTO manual_sources (id, label, field_map, cost_multiplier, apply_margin_rate, ad_name_prefix)
+       VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
+      [s.id, s.label, JSON.stringify(s.field_map), s.cost_multiplier, s.apply_margin_rate, s.ad_name_prefix]
+    );
+  }
+
+  // 예전 이름(asa_raw, x_raw)으로 저장된 raw_data가 있으면 새 이름으로 이전
+  await pool.query(`UPDATE raw_data SET source = 'apple' WHERE source = 'asa_raw'`);
+  await pool.query(`UPDATE raw_data SET source = 'x' WHERE source = 'x_raw'`);
+}
+
+async function getManualSources() {
+  const { rows } = await pool.query('SELECT * FROM manual_sources ORDER BY id');
+  return rows;
+}
+
+async function getManualSource(id) {
+  const { rows } = await pool.query('SELECT * FROM manual_sources WHERE id = $1', [id]);
+  return rows[0] || null;
+}
+
+async function upsertManualSource(source) {
+  const { id, label, field_map, cost_multiplier, apply_margin_rate, ad_name_prefix } = source;
+  await pool.query(
+    `INSERT INTO manual_sources (id, label, field_map, cost_multiplier, apply_margin_rate, ad_name_prefix)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (id) DO UPDATE SET
+       label = EXCLUDED.label,
+       field_map = EXCLUDED.field_map,
+       cost_multiplier = EXCLUDED.cost_multiplier,
+       apply_margin_rate = EXCLUDED.apply_margin_rate,
+       ad_name_prefix = EXCLUDED.ad_name_prefix`,
+    [id, label, JSON.stringify(field_map), cost_multiplier, apply_margin_rate, ad_name_prefix]
+  );
+}
+
+async function deleteManualSource(id) {
+  await pool.query('DELETE FROM manual_sources WHERE id = $1', [id]);
 }
 
 async function getSettings() {
@@ -144,4 +233,8 @@ module.exports = {
   replaceSourceData,
   queryRawData,
   distinctSources,
+  getManualSources,
+  getManualSource,
+  upsertManualSource,
+  deleteManualSource,
 };

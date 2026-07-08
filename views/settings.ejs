@@ -19,6 +19,7 @@
 
   <div class="tabs">
     <button type="button" class="tab-btn active" data-tab="general">일반 설정</button>
+    <button type="button" class="tab-btn" data-tab="manual">수동 업로드 매체</button>
     <% mediaSchema.forEach(m => { %>
       <button type="button" class="tab-btn" data-tab="<%= m.id %>"><%= m.label %></button>
     <% }) %>
@@ -51,6 +52,98 @@
         <input type="text" name="key" style="width:300px;">
         <label>값</label>
         <input type="text" name="value" style="width:300px;">
+        <button type="submit">추가</button>
+      </form>
+    </div>
+  </div>
+
+  <%
+    const manualFieldDefs = [
+      { key: 'date', label: '날짜' },
+      { key: 'campaign_name', label: '캠페인' },
+      { key: 'adgroup_name', label: '광고그룹' },
+      { key: 'ad_name', label: '광고명' },
+      { key: 'cost', label: '비용' },
+      { key: 'impressions', label: '노출' },
+      { key: 'clicks', label: '클릭' },
+      { key: 'installs', label: '설치' },
+    ];
+  %>
+
+  <div id="tab-manual" class="tab-content">
+    <div class="hint" style="margin-bottom:14px;">
+      여기서 등록한 매체는 Raw 데이터 화면의 "수동 raw 업로드" 드롭다운에 자동으로 나타납니다.
+      컬럼명은 업로드할 파일의 실제 헤더명을 넣으면 되고, 여러 개가 있을 수 있으면 쉼표(,)로 구분해서 여러 개 적어도 됩니다
+      (예: <code>Campaign,캠페인,Campaign Name</code>). 표 위에 다른 줄이 섞여 있어도 헤더 행을 자동으로 찾습니다.
+    </div>
+
+    <% manualSources.forEach(m => { %>
+      <div class="card">
+        <h4 style="margin-top:0;"><%= m.label %> <span class="hint">(id: <%= m.id %>)</span></h4>
+        <form method="POST" action="/settings/manual-sources">
+          <input type="hidden" name="id" value="<%= m.id %>">
+          <div class="field-row">
+            <label>표시명</label>
+            <input type="text" name="label" value="<%= m.label %>">
+          </div>
+          <% manualFieldDefs.forEach(f => { %>
+            <div class="field-row">
+              <label><%= f.label %> 컬럼명 (쉼표로 여러 개 가능)</label>
+              <input type="text" name="field_<%= f.key %>" value="<%= (m.field_map && m.field_map[f.key]) || '' %>">
+            </div>
+          <% }) %>
+          <div class="field-row">
+            <label>광고명 앞에 붙일 접두어 (선택, 예: keyword_)</label>
+            <input type="text" name="ad_name_prefix" value="<%= m.ad_name_prefix || '' %>">
+          </div>
+          <div class="field-row">
+            <label>비용에 곱할 배수 (환율 등, 기본 1)</label>
+            <input type="number" step="any" name="cost_multiplier" value="<%= m.cost_multiplier != null ? m.cost_multiplier : 1 %>">
+          </div>
+          <div class="field-row">
+            <label>
+              <input type="checkbox" name="apply_margin_rate" value="1" <%= m.apply_margin_rate ? 'checked' : '' %>>
+              마진율(MARGIN_RATE) 나누기 적용
+            </label>
+          </div>
+          <button type="submit">저장</button>
+        </form>
+        <form method="POST" action="/settings/manual-sources/delete" style="display:inline;"
+          onsubmit="return confirm('삭제하면 업로드 드롭다운에서 사라집니다. 이미 업로드된 raw 데이터는 남아있습니다. 계속할까요?');">
+          <input type="hidden" name="id" value="<%= m.id %>">
+          <button type="submit" class="secondary">삭제</button>
+        </form>
+      </div>
+    <% }) %>
+
+    <div class="card">
+      <h3 style="margin-top:0;">새 매체 추가</h3>
+      <form method="POST" action="/settings/manual-sources">
+        <div class="field-row">
+          <label>매체 ID (영문/숫자/언더스코어, 예: tradingworks)</label>
+          <input type="text" name="id" style="width:300px;">
+        </div>
+        <div class="field-row">
+          <label>표시명</label>
+          <input type="text" name="label" style="width:300px;">
+        </div>
+        <% manualFieldDefs.forEach(f => { %>
+          <div class="field-row">
+            <label><%= f.label %> 컬럼명 (쉼표로 여러 개 가능)</label>
+            <input type="text" name="field_<%= f.key %>">
+          </div>
+        <% }) %>
+        <div class="field-row">
+          <label>광고명 앞에 붙일 접두어 (선택)</label>
+          <input type="text" name="ad_name_prefix">
+        </div>
+        <div class="field-row">
+          <label>비용에 곱할 배수 (환율 등, 기본 1)</label>
+          <input type="number" step="any" name="cost_multiplier" value="1">
+        </div>
+        <div class="field-row">
+          <label><input type="checkbox" name="apply_margin_rate" value="1"> 마진율(MARGIN_RATE) 나누기 적용</label>
+        </div>
         <button type="submit">추가</button>
       </form>
     </div>

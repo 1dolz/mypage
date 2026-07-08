@@ -3,7 +3,6 @@ const express = require('express');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const multer = require('multer');
-const { parse } = require('csv-parse/sync');
 const XLSX = require('xlsx');
 const cron = require('node-cron');
 
@@ -13,6 +12,7 @@ const { fetchGoogleBranding, exchangeAuthCodeForRefreshToken } = require('./fetc
 const { fetchTikTokAds, exchangeAuthCodeForAccessToken: exchangeTikTokAuthCode } = require('./fetchers/tiktok');
 const { fetchAppleAds } = require('./fetchers/appleAds');
 const { fetchAdpopcorn } = require('./fetchers/adpopcorn');
+const { parseManualUploadFile } = require('./lib/manualUpload');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -76,7 +76,8 @@ app.get('/', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
   const rows = await db.queryRawData({ source, startDate, endDate });
   const sources = await db.distinctSources();
-  res.render('dashboard', { rows, sources, filters: { source, startDate, endDate } });
+  const manualSources = await db.getManualSources();
+  res.render('dashboard', { rows, sources, manualSources, filters: { source, startDate, endDate } });
 });
 
 // 특정 매체의 raw 데이터를 통째로 삭제 (테스트 데이터/이름 바뀐 매체 정리용)
@@ -142,121 +143,21 @@ app.get('/export.xlsx', requireLogin, async (req, res) => {
 });
 
 // ===== 수동 raw 업로드 =====
-const MANUAL_SOURCES = ['tenping', 'valista', 'appier', 'asa_raw', 'x_raw'];
-
-// ASA raw (Apple Search Ads 리포트 내보내기 파일) 전용 파싱.
-// Apple이 내보내는 xlsx/csv는 맨 위에 "Download Time / Report Name / Report Type / ..." 같은
-// 메타데이터 행이 몇 줄 붙어있고, 그 아래에 실제 헤더(Date, Campaign Name, Ad Group Name,
-// Keyword, Spend, Impressions, Taps, Installs (Total))가 나오는 구조라 일반 매핑으로는 못 읽음.
-function findAsaHeaderRow(aoa) {
-  const idx = aoa.findIndex((row) => row && String(row[0] || '').trim() === 'Date');
-  if (idx === -1) {
-    throw new Error('ASA raw 파일에서 헤더 행을 찾지 못했습니다. (Date로 시작하는 행이 없음)');
-  }
-  return idx;
-}
-
-function aoaToObjects(aoa, headerIdx) {
-  const headers = aoa[headerIdx].map((h) => String(h || '').trim());
-  return aoa
-    .slice(headerIdx + 1)
-    .filter((row) => row && row[0] !== undefined && row[0] !== '')
-    .map((row) => {
-      const obj = {};
-      headers.forEach((h, i) => {
-        obj[h] = row[i];
-      });
-      return obj;
-    });
-}
-
-// Apple 리포트의 Spend는 USD 기준 (Parameters applied: Currency: USD) -> ASA_EXCHANGE_RATE로 KRW 환산.
-// 다른 매체 자동수집과 동일하게 MARGIN_RATE 보정도 적용.
-function mapAsaRawRow(r, exchangeRate, marginRate) {
-  const rawDate = String(r['Date'] || '').trim(); // MM/DD/YYYY
-  let date = null;
-  const parts = rawDate.split('/');
-  if (parts.length === 3) {
-    const [mm, dd, yyyy] = parts;
-    date = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-  }
-  const spendUsd = Number(r['Spend']) || 0;
-  const costKrw = spendUsd * exchangeRate;
-
-  return {
-    date,
-    campaign_name: r['Campaign Name'] || '',
-    adgroup_name: r['Ad Group Name'] || '',
-    ad_name: `keyword_${r['Keyword'] || ''}`,
-    cost: Math.round(costKrw / marginRate),
-    impressions: Number(r['Impressions']) || 0,
-    clicks: Number(r['Taps']) || 0,
-    installs: Number(r['Installs (Total)']) || 0,
-    extra: r,
-  };
-}
-
-async function parseAsaRawFile(buffer, ext) {
-  const exchangeRate = parseFloat(await db.getSetting('ASA_EXCHANGE_RATE', '1500')) || 1500;
-  const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
-
-  let aoa;
-  if (ext === 'xlsx' || ext === 'xls') {
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
-  } else {
-    const text = buffer.toString('utf-8');
-    aoa = parse(text, { skip_empty_lines: true, trim: true });
-  }
-
-  const headerIdx = findAsaHeaderRow(aoa);
-  const records = aoaToObjects(aoa, headerIdx);
-  return records.map((r) => mapAsaRawRow(r, exchangeRate, marginRate));
-}
-
+// 매체 목록과 컬럼 매핑은 더 이상 코드에 하드코딩하지 않고 manual_sources 테이블(=/settings 화면)에서 관리함.
 app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
   try {
     const source = req.body.source;
-    if (!MANUAL_SOURCES.includes(source)) {
-      return res.status(400).send('알 수 없는 매체입니다.');
+    const sourceConfig = await db.getManualSource(source);
+    if (!sourceConfig) {
+      return res.status(400).send('알 수 없는 매체입니다. (/settings에서 매체를 먼저 등록해주세요)');
     }
     if (!req.file) return res.status(400).send('파일이 없습니다.');
 
     const filename = req.file.originalname || '';
     const ext = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
+    const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
 
-    let rows;
-
-    if (source === 'asa_raw') {
-      rows = await parseAsaRawFile(req.file.buffer, ext);
-    } else {
-      let records;
-      if (ext === 'xlsx' || ext === 'xls') {
-        // 엑셀 파일: 첫 번째 시트를 헤더 기준 객체 배열로 변환
-        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-        const firstSheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[firstSheetName];
-        records = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
-      } else {
-        // CSV 파일 (기본값)
-        const text = req.file.buffer.toString('utf-8');
-        records = parse(text, { columns: true, skip_empty_lines: true, trim: true });
-      }
-
-      // 매체별 컬럼 매핑은 다음 단계에서 채워 넣을 예정 (지금은 원본 그대로 저장)
-      rows = records.map((r) => ({
-        date: r['Date'] || r['날짜'] || r['Time period'] || null,
-        campaign_name: r['Campaign'] || r['캠페인'] || r['Campaign Name'] || '',
-        adgroup_name: r['Ad group'] || r['광고그룹'] || r['Ad Group Name'] || '',
-        ad_name: r['Ad name'] || r['광고명'] || r['Creative name'] || '',
-        cost: parseFloat(String(r['Spend'] || r['비용'] || '0').replace(/[^0-9.-]/g, '')) || 0,
-        impressions: parseFloat(String(r['Impressions'] || r['노출'] || '0').replace(/[^0-9.-]/g, '')) || 0,
-        clicks: parseFloat(String(r['Clicks'] || r['클릭'] || '0').replace(/[^0-9.-]/g, '')) || 0,
-        installs: parseFloat(String(r['Installs'] || r['설치'] || r['Actions'] || '0').replace(/[^0-9.-]/g, '')) || 0,
-        extra: r,
-      }));
-    }
+    const rows = parseManualUploadFile(req.file.buffer, ext, sourceConfig, { marginRate });
 
     await db.replaceSourceData(source, rows);
     res.redirect(`/?source=${source}`);
@@ -340,12 +241,58 @@ app.get('/settings', requireLogin, async (req, res) => {
   const mediaKeys = new Set(MEDIA_SETTINGS_SCHEMA.flatMap((m) => m.fields.map((f) => f.key)));
   const generalSettings = settings.filter((s) => !mediaKeys.has(s.key));
 
+  const manualSources = await db.getManualSources();
+
   res.render('settings', {
     settings: generalSettings,
     settingsMap,
     mediaSchema: MEDIA_SETTINGS_SCHEMA,
+    manualSources,
     saved: req.query.saved === '1',
   });
+});
+
+// ===== 수동 업로드 매체 관리 (매체 추가/수정/삭제를 코드 수정 없이 이 화면에서) =====
+const MANUAL_UPLOAD_FIELD_KEYS = [
+  'date',
+  'campaign_name',
+  'adgroup_name',
+  'ad_name',
+  'cost',
+  'impressions',
+  'clicks',
+  'installs',
+];
+
+app.post('/settings/manual-sources', requireLogin, async (req, res) => {
+  const { id, label, ad_name_prefix, cost_multiplier, apply_margin_rate } = req.body;
+
+  if (!id || !id.trim()) {
+    return res.status(400).send('매체 ID를 입력해주세요.');
+  }
+  const cleanId = id.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+  const field_map = {};
+  for (const key of MANUAL_UPLOAD_FIELD_KEYS) {
+    field_map[key] = req.body[`field_${key}`] || '';
+  }
+
+  await db.upsertManualSource({
+    id: cleanId,
+    label: label || cleanId,
+    field_map,
+    cost_multiplier: parseFloat(cost_multiplier) || 1,
+    apply_margin_rate: apply_margin_rate === '1' || apply_margin_rate === 'on',
+    ad_name_prefix: ad_name_prefix || '',
+  });
+
+  res.redirect('/settings?saved=1');
+});
+
+app.post('/settings/manual-sources/delete', requireLogin, async (req, res) => {
+  const { id } = req.body;
+  if (id) await db.deleteManualSource(id);
+  res.redirect('/settings?saved=1');
 });
 
 app.post('/settings', requireLogin, async (req, res) => {

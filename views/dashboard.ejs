@@ -22,11 +22,9 @@
         <div>
           <label>매체</label>
           <select name="source">
-            <option value="tenping">텐핑</option>
-            <option value="valista">바리스타</option>
-            <option value="appier">Appier</option>
-            <option value="asa_raw">ASA raw</option>
-            <option value="x_raw">X raw</option>
+            <% manualSources.forEach(m => { %>
+              <option value="<%= m.id %>"><%= m.label %></option>
+            <% }) %>
           </select>
         </div>
         <div>
@@ -35,7 +33,10 @@
         </div>
         <button type="submit">업로드</button>
       </div>
-      <div class="hint">업로드하면 해당 매체의 기존 데이터를 새 파일 내용으로 교체합니다.</div>
+      <div class="hint">
+        업로드하면 해당 매체의 기존 데이터를 새 파일 내용으로 교체합니다.
+        매체 추가/수정은 <a href="/settings">설정 &gt; 수동 업로드 매체</a>에서 할 수 있습니다.
+      </div>
     </form>
   </div>
 
