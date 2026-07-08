@@ -35,6 +35,23 @@ tr:hover { background: #fafafa; }
 .col-toggle-label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #555; margin: 0; }
 .col-toggle-label input { margin: 0; }
 
+.col-picker { margin: 14px 0 10px; }
+.col-picker-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.col-picker-header select { font-size: 12px; padding: 5px 8px; }
+.col-chip-list { display: flex; gap: 6px; flex-wrap: wrap; min-height: 30px; }
+.col-chip {
+  display: inline-flex; align-items: center; gap: 6px; background: #f0f0f0; border: 1px solid #ddd;
+  border-radius: 16px; padding: 4px 6px 4px 10px; font-size: 12px; color: #333; cursor: grab; user-select: none;
+}
+.col-chip.dragging { opacity: 0.4; }
+.col-chip.drag-over { border-color: #111; background: #e6e6e6; }
+.col-chip-handle { color: #999; font-size: 11px; }
+.col-chip-remove {
+  background: none; border: none; color: #999; cursor: pointer; font-size: 14px; line-height: 1;
+  padding: 0 2px; margin: 0;
+}
+.col-chip-remove:hover { color: #c00; }
+
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #e5e5e5; }
 .tab-btn {
   padding: 10px 16px; background: none; border: none; border-bottom: 2px solid transparent;
@@ -45,7 +62,9 @@ tr:hover { background: #fafafa; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 .field-row { margin-bottom: 14px; }
-.field-row input { width: 100%; max-width: 420px; box-sizing: border-box; }
+.field-row input:not([type="checkbox"]):not([type="radio"]) { width: 100%; max-width: 420px; box-sizing: border-box; }
+.checkbox-label { display: flex !important; align-items: center; gap: 8px; margin-top: 10px; margin-bottom: 4px; cursor: pointer; }
+.checkbox-label input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
 .login-box { max-width: 320px; margin: 100px auto; }
 .error { color: #c00; font-size: 13px; margin-top: 8px; }
 .hint { color: #888; font-size: 12px; margin-top: 4px; }

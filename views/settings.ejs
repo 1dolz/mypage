@@ -156,9 +156,9 @@
           <input type="number" step="any" name="cost_multiplier" value="<%= editingManual.cost_multiplier != null ? editingManual.cost_multiplier : 1 %>">
         </div>
         <div class="field-row">
-          <label>
+          <label class="checkbox-label">
             <input type="checkbox" name="apply_margin_rate" value="1" <%= editingManual.apply_margin_rate ? 'checked' : '' %>>
-            마진율(MARGIN_RATE) 나누기 적용
+            <span>마진율(MARGIN_RATE) 나누기 적용</span>
           </label>
         </div>
         <button type="submit"><%= isNewManual ? '추가' : '저장' %></button>

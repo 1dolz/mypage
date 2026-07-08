@@ -103,14 +103,17 @@
       ];
     %>
 
-    <div class="col-toggles">
-      <span class="hint" style="margin:0;">표시할 항목:</span>
-      <% columnDefs.forEach(c => { %>
-        <label class="col-toggle-label">
-          <input type="checkbox" class="col-toggle" data-col="<%= c.key %>" checked>
-          <%= c.label %>
-        </label>
-      <% }) %>
+    <div class="col-picker">
+      <div class="col-picker-header">
+        <span class="hint" style="margin:0;">표시할 항목 (드래그해서 순서 변경 가능):</span>
+        <select id="add-column-select">
+          <option value="">+ 항목 추가</option>
+          <% columnDefs.forEach(c => { %>
+            <option value="<%= c.key %>" data-label="<%= c.label %>"><%= c.label %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div id="selected-columns-chips" class="col-chip-list"></div>
     </div>
 
     <div class="table-wrap">
@@ -140,35 +143,127 @@
 
   <script>
     (function () {
+      const COLUMN_DEFS = <%- JSON.stringify(columnDefs.map(c => ({ key: c.key, label: c.label }))) %>;
       const DEFAULT_VISIBLE = <%- JSON.stringify(columnDefs.filter(c => c.default).map(c => c.key)) %>;
-      const STORAGE_KEY = 'dashboardVisibleColumns';
+      const STORAGE_KEY = 'dashboardVisibleColumns'; // 값: 선택된 컬럼 key 배열 (표시 순서 그대로)
 
-      function getVisible() {
+      const labelByKey = {};
+      COLUMN_DEFS.forEach((c) => { labelByKey[c.key] = c.label; });
+
+      const chipList = document.getElementById('selected-columns-chips');
+      const addSelect = document.getElementById('add-column-select');
+
+      function loadOrder() {
         try {
           const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-          if (Array.isArray(saved)) return saved;
+          if (Array.isArray(saved)) return saved.filter((k) => labelByKey[k]);
         } catch (e) {}
-        return DEFAULT_VISIBLE;
+        return DEFAULT_VISIBLE.slice();
       }
 
-      function applyVisibility(visible) {
-        document.querySelectorAll('#raw-table [data-col]').forEach((el) => {
-          el.style.display = visible.includes(el.dataset.col) ? '' : 'none';
-        });
-        document.querySelectorAll('.col-toggle').forEach((cb) => {
-          cb.checked = visible.includes(cb.dataset.col);
+      function saveOrder(order) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+      }
+
+      // 실제 테이블의 th/td를 선택된 순서대로 재배치하고, 선택 안 된 항목은 숨김
+      function applyColumnLayout(order) {
+        const selectedSet = new Set(order);
+        document.querySelectorAll('#raw-table tr').forEach((tr) => {
+          const cells = Array.from(tr.children);
+          const cellMap = {};
+          cells.forEach((c) => { cellMap[c.dataset.col] = c; });
+          order.forEach((key) => {
+            const cell = cellMap[key];
+            if (cell) tr.appendChild(cell);
+          });
+          cells.forEach((c) => {
+            c.style.display = selectedSet.has(c.dataset.col) ? '' : 'none';
+          });
         });
       }
 
-      document.querySelectorAll('.col-toggle').forEach((cb) => {
-        cb.addEventListener('change', () => {
-          const visible = Array.from(document.querySelectorAll('.col-toggle:checked')).map((c) => c.dataset.col);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(visible));
-          applyVisibility(visible);
+      function renderAddSelect(order) {
+        const selectedSet = new Set(order);
+        addSelect.innerHTML = '<option value="">+ 항목 추가</option>';
+        COLUMN_DEFS.forEach((c) => {
+          if (selectedSet.has(c.key)) return;
+          const opt = document.createElement('option');
+          opt.value = c.key;
+          opt.textContent = c.label;
+          addSelect.appendChild(opt);
         });
+      }
+
+      function renderChips(order) {
+        chipList.innerHTML = '';
+        order.forEach((key) => {
+          const label = labelByKey[key];
+          if (!label) return;
+          const chip = document.createElement('div');
+          chip.className = 'col-chip';
+          chip.draggable = true;
+          chip.dataset.col = key;
+          chip.innerHTML =
+            '<span class="col-chip-handle">⠿</span><span class="col-chip-text"></span>' +
+            '<button type="button" class="col-chip-remove" title="제거">×</button>';
+          chip.querySelector('.col-chip-text').textContent = label;
+          chipList.appendChild(chip);
+        });
+      }
+
+      function update(order) {
+        saveOrder(order);
+        renderChips(order);
+        renderAddSelect(order);
+        applyColumnLayout(order);
+        attachChipEvents();
+      }
+
+      function attachChipEvents() {
+        const chips = Array.from(chipList.querySelectorAll('.col-chip'));
+
+        chips.forEach((chip) => {
+          chip.querySelector('.col-chip-remove').addEventListener('click', () => {
+            const order = getCurrentOrder().filter((k) => k !== chip.dataset.col);
+            update(order);
+          });
+
+          chip.addEventListener('dragstart', () => {
+            chip.classList.add('dragging');
+          });
+          chip.addEventListener('dragend', () => {
+            chip.classList.remove('dragging');
+            chips.forEach((c) => c.classList.remove('drag-over'));
+            const order = Array.from(chipList.querySelectorAll('.col-chip')).map((c) => c.dataset.col);
+            update(order);
+          });
+          chip.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const dragging = chipList.querySelector('.col-chip.dragging');
+            if (!dragging || dragging === chip) return;
+            chips.forEach((c) => c.classList.remove('drag-over'));
+            chip.classList.add('drag-over');
+            const rect = chip.getBoundingClientRect();
+            const before = e.clientX < rect.left + rect.width / 2;
+            chipList.insertBefore(dragging, before ? chip : chip.nextSibling);
+          });
+        });
+      }
+
+      function getCurrentOrder() {
+        return Array.from(chipList.querySelectorAll('.col-chip')).map((c) => c.dataset.col);
+      }
+
+      addSelect.addEventListener('change', (e) => {
+        const key = e.target.value;
+        if (!key) return;
+        const order = getCurrentOrder();
+        order.push(key);
+        update(order);
+        addSelect.value = '';
       });
 
-      applyVisibility(getVisible());
+      update(loadOrder());
     })();
   </script>
 </body>
