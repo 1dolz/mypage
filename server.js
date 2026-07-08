@@ -59,6 +59,18 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
+// 지금 서버가 외부로 나갈 때 쓰는 IP 확인용 (Adpopcorn 같은 IP 화이트리스트 API 등록할 때 사용).
+// 확인 후에는 지워도 됨.
+app.get('/debug/outbound-ip', requireLogin, async (req, res) => {
+  try {
+    const ipRes = await fetch('https://api.ipify.org?format=json');
+    const data = await ipRes.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ===== 대시보드 (raw 데이터 조회) =====
 app.get('/', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
