@@ -81,8 +81,21 @@
   <div id="tab-manual" class="tab-content">
     <div class="hint" style="margin-bottom:14px;">
       여기서 등록한 매체는 Raw 데이터 화면의 "수동 raw 업로드" 드롭다운에 자동으로 나타납니다.
-      대부분의 컬럼(날짜/캠페인/광고그룹/광고명/비용/노출/클릭/설치)은 흔한 이름(Date, Campaign, Spend 등)을 자동으로 시도하기 때문에
-      실제 파일의 헤더명이 다른 항목만 아래에서 재정의하면 됩니다.
+      아래 "기본값"은 모든 매체에 공통으로 적용되는 컬럼명 후보이고, 특정 매체의 파일만 헤더명이 다르면
+      그 매체 설정에서 재정의를 추가하면 됩니다.
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;">기본값 <span class="hint">(모든 매체에 공통 적용. 실제 파일의 헤더명이 여기 있는 이름과 일치하면 별도 재정의 없이 자동으로 인식됨)</span></h4>
+      <form method="POST" action="/settings/manual-defaults">
+        <% manualFieldDefs.forEach(f => { %>
+          <div class="field-row">
+            <label style="width:80px; display:inline-block;"><%= f.label %></label>
+            <input type="text" name="default_<%= f.key %>" value="<%= manualDefaults[f.key] || '' %>" style="width:400px;" placeholder="쉼표로 여러 개 가능">
+          </div>
+        <% }) %>
+        <button type="submit">기본값 저장</button>
+      </form>
     </div>
 
     <div class="card">

@@ -1,4 +1,7 @@
 const { Pool } = require('pg');
+const { DEFAULT_FIELD_MAP } = require('./lib/manualUpload');
+
+const MANUAL_DEFAULTS_SETTING_KEY = 'MANUAL_DEFAULT_FIELD_MAP';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -101,6 +104,47 @@ async function initDb() {
   // 예전 이름(asa_raw, x_raw)으로 저장된 raw_data가 있으면 새 이름으로 이전
   await pool.query(`UPDATE raw_data SET source = 'apple' WHERE source = 'asa_raw'`);
   await pool.query(`UPDATE raw_data SET source = 'x' WHERE source = 'x_raw'`);
+
+  // 과거(기본값+재정의 병합 기능이 생기기 전)에는 매체별 field_map에 기본 컬럼명을 그대로 박아넣었던
+  // 데이터가 남아있을 수 있음. 지금은 기본값을 전역으로 관리하므로, 값이 내장 기본값과 정확히 같은
+  // 항목은 "실제 재정의"가 아니라고 보고 지워서 매체별 설정 화면을 깨끗하게 정리함.
+  const { rows: existingManualSources } = await pool.query('SELECT id, field_map FROM manual_sources');
+  for (const row of existingManualSources) {
+    const fieldMap = row.field_map || {};
+    const cleaned = {};
+    let changed = false;
+    for (const [key, value] of Object.entries(fieldMap)) {
+      const builtin = DEFAULT_FIELD_MAP[key];
+      if (builtin && String(value || '').trim() === builtin.trim()) {
+        changed = true;
+        continue;
+      }
+      cleaned[key] = value;
+    }
+    if (changed) {
+      await pool.query('UPDATE manual_sources SET field_map = $1 WHERE id = $2', [
+        JSON.stringify(cleaned),
+        row.id,
+      ]);
+    }
+  }
+}
+
+// ===== 전역 기본 컬럼명 (모든 매체에 공통 적용, /settings > 수동 업로드 매체 상단에서 관리) =====
+async function getManualDefaults() {
+  const raw = await getSetting(MANUAL_DEFAULTS_SETTING_KEY, '');
+  if (!raw) return { ...DEFAULT_FIELD_MAP };
+  try {
+    const parsed = JSON.parse(raw);
+    // 혹시 일부 필드만 저장돼 있어도 나머지는 내장 기본값으로 채움
+    return { ...DEFAULT_FIELD_MAP, ...parsed };
+  } catch (e) {
+    return { ...DEFAULT_FIELD_MAP };
+  }
+}
+
+async function setManualDefaults(map) {
+  await setSetting(MANUAL_DEFAULTS_SETTING_KEY, JSON.stringify(map));
 }
 
 async function getManualSources() {
@@ -225,4 +269,6 @@ module.exports = {
   getManualSource,
   upsertManualSource,
   deleteManualSource,
+  getManualDefaults,
+  setManualDefaults,
 };

@@ -12,7 +12,7 @@ const { fetchGoogleBranding, exchangeAuthCodeForRefreshToken } = require('./fetc
 const { fetchTikTokAds, exchangeAuthCodeForAccessToken: exchangeTikTokAuthCode } = require('./fetchers/tiktok');
 const { fetchAppleAds } = require('./fetchers/appleAds');
 const { fetchAdpopcorn } = require('./fetchers/adpopcorn');
-const { parseManualUploadFile } = require('./lib/manualUpload');
+const { parseManualUploadFile, DEFAULT_FIELD_MAP } = require('./lib/manualUpload');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -156,8 +156,9 @@ app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
     const filename = req.file.originalname || '';
     const ext = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
     const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
+    const defaultsMap = await db.getManualDefaults();
 
-    const rows = parseManualUploadFile(req.file.buffer, ext, sourceConfig, { marginRate });
+    const rows = parseManualUploadFile(req.file.buffer, ext, sourceConfig, { marginRate, defaultsMap });
 
     await db.replaceSourceData(source, rows);
     res.redirect(`/?source=${source}`);
@@ -242,6 +243,7 @@ app.get('/settings', requireLogin, async (req, res) => {
   const generalSettings = settings.filter((s) => !mediaKeys.has(s.key));
 
   const manualSources = await db.getManualSources();
+  const manualDefaults = await db.getManualDefaults();
 
   // 수동 업로드 매체 탭에서 선택된 매체 (드롭다운으로 고름). 없으면 첫 번째 매체, 그것도 없으면 "새 매체 추가" 상태.
   const selectedManualId =
@@ -253,6 +255,7 @@ app.get('/settings', requireLogin, async (req, res) => {
     settingsMap,
     mediaSchema: MEDIA_SETTINGS_SCHEMA,
     manualSources,
+    manualDefaults,
     selectedManualId,
     selectedManual,
     saved: req.query.saved === '1',
@@ -270,6 +273,16 @@ const MANUAL_UPLOAD_FIELD_KEYS = [
   'clicks',
   'installs',
 ];
+
+// 모든 매체에 공통으로 적용되는 기본 컬럼명 저장 (매체별 재정의보다 우선순위가 낮음)
+app.post('/settings/manual-defaults', requireLogin, async (req, res) => {
+  const map = {};
+  for (const key of MANUAL_UPLOAD_FIELD_KEYS) {
+    map[key] = req.body[`default_${key}`] || '';
+  }
+  await db.setManualDefaults(map);
+  res.redirect('/settings?saved=1#tab-manual');
+});
 
 app.post('/settings/manual-sources', requireLogin, async (req, res) => {
   const { id, label, ad_name_prefix, cost_multiplier, apply_margin_rate } = req.body;
