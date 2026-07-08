@@ -12,6 +12,7 @@ const { fetchMetaAds } = require('./fetchers/meta');
 const { fetchGoogleBranding, exchangeAuthCodeForRefreshToken } = require('./fetchers/googleAds');
 const { fetchTikTokAds, exchangeAuthCodeForAccessToken: exchangeTikTokAuthCode } = require('./fetchers/tiktok');
 const { fetchAppleAds } = require('./fetchers/appleAds');
+const { fetchAdpopcorn } = require('./fetchers/adpopcorn');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -131,6 +132,77 @@ app.get('/export.xlsx', requireLogin, async (req, res) => {
 // ===== 수동 raw 업로드 =====
 const MANUAL_SOURCES = ['tenping', 'valista', 'appier', 'asa_raw', 'x_raw'];
 
+// ASA raw (Apple Search Ads 리포트 내보내기 파일) 전용 파싱.
+// Apple이 내보내는 xlsx/csv는 맨 위에 "Download Time / Report Name / Report Type / ..." 같은
+// 메타데이터 행이 몇 줄 붙어있고, 그 아래에 실제 헤더(Date, Campaign Name, Ad Group Name,
+// Keyword, Spend, Impressions, Taps, Installs (Total))가 나오는 구조라 일반 매핑으로는 못 읽음.
+function findAsaHeaderRow(aoa) {
+  const idx = aoa.findIndex((row) => row && String(row[0] || '').trim() === 'Date');
+  if (idx === -1) {
+    throw new Error('ASA raw 파일에서 헤더 행을 찾지 못했습니다. (Date로 시작하는 행이 없음)');
+  }
+  return idx;
+}
+
+function aoaToObjects(aoa, headerIdx) {
+  const headers = aoa[headerIdx].map((h) => String(h || '').trim());
+  return aoa
+    .slice(headerIdx + 1)
+    .filter((row) => row && row[0] !== undefined && row[0] !== '')
+    .map((row) => {
+      const obj = {};
+      headers.forEach((h, i) => {
+        obj[h] = row[i];
+      });
+      return obj;
+    });
+}
+
+// Apple 리포트의 Spend는 USD 기준 (Parameters applied: Currency: USD) -> ASA_EXCHANGE_RATE로 KRW 환산.
+// 다른 매체 자동수집과 동일하게 MARGIN_RATE 보정도 적용.
+function mapAsaRawRow(r, exchangeRate, marginRate) {
+  const rawDate = String(r['Date'] || '').trim(); // MM/DD/YYYY
+  let date = null;
+  const parts = rawDate.split('/');
+  if (parts.length === 3) {
+    const [mm, dd, yyyy] = parts;
+    date = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  }
+  const spendUsd = Number(r['Spend']) || 0;
+  const costKrw = spendUsd * exchangeRate;
+
+  return {
+    date,
+    campaign_name: r['Campaign Name'] || '',
+    adgroup_name: r['Ad Group Name'] || '',
+    ad_name: `keyword_${r['Keyword'] || ''}`,
+    cost: Math.round(costKrw / marginRate),
+    impressions: Number(r['Impressions']) || 0,
+    clicks: Number(r['Taps']) || 0,
+    installs: Number(r['Installs (Total)']) || 0,
+    extra: r,
+  };
+}
+
+async function parseAsaRawFile(buffer, ext) {
+  const exchangeRate = parseFloat(await db.getSetting('ASA_EXCHANGE_RATE', '1500')) || 1500;
+  const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
+
+  let aoa;
+  if (ext === 'xlsx' || ext === 'xls') {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+  } else {
+    const text = buffer.toString('utf-8');
+    aoa = parse(text, { skip_empty_lines: true, trim: true });
+  }
+
+  const headerIdx = findAsaHeaderRow(aoa);
+  const records = aoaToObjects(aoa, headerIdx);
+  return records.map((r) => mapAsaRawRow(r, exchangeRate, marginRate));
+}
+
 app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
   try {
     const source = req.body.source;
@@ -142,31 +214,37 @@ app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
     const filename = req.file.originalname || '';
     const ext = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
 
-    let records;
-    if (ext === 'xlsx' || ext === 'xls') {
-      // 엑셀 파일: 첫 번째 시트를 헤더 기준 객체 배열로 변환
-      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-      const firstSheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[firstSheetName];
-      records = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
-    } else {
-      // CSV 파일 (기본값)
-      const text = req.file.buffer.toString('utf-8');
-      records = parse(text, { columns: true, skip_empty_lines: true, trim: true });
-    }
+    let rows;
 
-    // 매체별 컬럼 매핑은 다음 단계에서 채워 넣을 예정 (지금은 원본 그대로 저장)
-    const rows = records.map((r) => ({
-      date: r['Date'] || r['날짜'] || r['Time period'] || null,
-      campaign_name: r['Campaign'] || r['캠페인'] || r['Campaign Name'] || '',
-      adgroup_name: r['Ad group'] || r['광고그룹'] || r['Ad Group Name'] || '',
-      ad_name: r['Ad name'] || r['광고명'] || r['Creative name'] || '',
-      cost: parseFloat(String(r['Spend'] || r['비용'] || '0').replace(/[^0-9.-]/g, '')) || 0,
-      impressions: parseFloat(String(r['Impressions'] || r['노출'] || '0').replace(/[^0-9.-]/g, '')) || 0,
-      clicks: parseFloat(String(r['Clicks'] || r['클릭'] || '0').replace(/[^0-9.-]/g, '')) || 0,
-      installs: parseFloat(String(r['Installs'] || r['설치'] || r['Actions'] || '0').replace(/[^0-9.-]/g, '')) || 0,
-      extra: r,
-    }));
+    if (source === 'asa_raw') {
+      rows = await parseAsaRawFile(req.file.buffer, ext);
+    } else {
+      let records;
+      if (ext === 'xlsx' || ext === 'xls') {
+        // 엑셀 파일: 첫 번째 시트를 헤더 기준 객체 배열로 변환
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const firstSheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheetName];
+        records = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+      } else {
+        // CSV 파일 (기본값)
+        const text = req.file.buffer.toString('utf-8');
+        records = parse(text, { columns: true, skip_empty_lines: true, trim: true });
+      }
+
+      // 매체별 컬럼 매핑은 다음 단계에서 채워 넣을 예정 (지금은 원본 그대로 저장)
+      rows = records.map((r) => ({
+        date: r['Date'] || r['날짜'] || r['Time period'] || null,
+        campaign_name: r['Campaign'] || r['캠페인'] || r['Campaign Name'] || '',
+        adgroup_name: r['Ad group'] || r['광고그룹'] || r['Ad Group Name'] || '',
+        ad_name: r['Ad name'] || r['광고명'] || r['Creative name'] || '',
+        cost: parseFloat(String(r['Spend'] || r['비용'] || '0').replace(/[^0-9.-]/g, '')) || 0,
+        impressions: parseFloat(String(r['Impressions'] || r['노출'] || '0').replace(/[^0-9.-]/g, '')) || 0,
+        clicks: parseFloat(String(r['Clicks'] || r['클릭'] || '0').replace(/[^0-9.-]/g, '')) || 0,
+        installs: parseFloat(String(r['Installs'] || r['설치'] || r['Actions'] || '0').replace(/[^0-9.-]/g, '')) || 0,
+        extra: r,
+      }));
+    }
 
     await db.replaceSourceData(source, rows);
     res.redirect(`/?source=${source}`);
@@ -222,6 +300,18 @@ const MEDIA_SETTINGS_SCHEMA = [
       { key: 'APPLE_KEY_ID', label: 'Key ID' },
       { key: 'APPLE_ORG_ID', label: 'Org ID' },
       { key: 'APPLE_PRIVATE_KEY', label: 'Private Key (.p8 파일 내용 전체)', type: 'textarea' },
+    ],
+  },
+  {
+    id: 'adpopcorn',
+    label: 'Adpopcorn',
+    fields: [
+      { key: 'ADPOPCORN_ACCESS_TOKEN', label: 'Access Token', type: 'password' },
+      {
+        key: 'ADPOPCORN_FILTER_CAMPAIGNS',
+        label: '집계할 캠페인명 (한 줄에 하나씩, 비워두면 전체 포함)',
+        type: 'textarea',
+      },
     ],
   },
 ];
@@ -341,7 +431,11 @@ async function runAllFetchers() {
     console.error('[cron] Apple Search Ads 수집 실패:', err.message);
   }
 
-  // TODO: fetchAdpopcorn() 등을 여기서 순서대로 호출
+  try {
+    await fetchAdpopcorn();
+  } catch (err) {
+    console.error('[cron] Adpopcorn 수집 실패:', err.message);
+  }
 }
 
 // 매일 오전 9시 (Asia/Seoul) 자동 실행

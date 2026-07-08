@@ -82,28 +82,93 @@
       <button type="submit" class="secondary">선택 매체 데이터 삭제</button>
     </form>
 
+    <%
+      const columnDefs = [
+        { key: 'date', label: '날짜', default: true },
+        { key: 'source', label: '매체', default: true },
+        { key: 'campaign_name', label: '캠페인', default: true },
+        { key: 'adgroup_name', label: '광고그룹', default: true },
+        { key: 'ad_name', label: '광고명', default: true },
+        { key: 'cost', label: '비용', default: true },
+        { key: 'impressions', label: '노출', default: true },
+        { key: 'clicks', label: '클릭', default: true },
+        { key: 'views', label: '조회수', default: false },
+        { key: 'video_play', label: '6초 재생', default: false },
+        { key: 'p25', label: '25% 시청', default: false },
+        { key: 'p50', label: '50% 시청', default: false },
+        { key: 'p75', label: '75% 시청', default: false },
+        { key: 'p100', label: '100% 시청', default: false },
+        { key: 'installs', label: '설치', default: true },
+      ];
+    %>
+
+    <div class="col-toggles">
+      <span class="hint" style="margin:0;">표시할 항목:</span>
+      <% columnDefs.forEach(c => { %>
+        <label class="col-toggle-label">
+          <input type="checkbox" class="col-toggle" data-col="<%= c.key %>" checked>
+          <%= c.label %>
+        </label>
+      <% }) %>
+    </div>
+
     <div class="table-wrap">
-      <table>
+      <table id="raw-table">
         <tr>
-          <th>날짜</th><th>매체</th><th>캠페인</th><th>광고그룹</th><th>광고명</th>
-          <th>비용</th><th>노출</th><th>클릭</th><th>설치</th>
+          <% columnDefs.forEach(c => { %>
+            <th data-col="<%= c.key %>"><%= c.label %></th>
+          <% }) %>
         </tr>
         <% rows.forEach(r => { %>
           <tr>
-            <td><%= r.date ? new Date(r.date).toISOString().slice(0,10) : '' %></td>
-            <td><%= r.source %></td>
-            <td><%= r.campaign_name %></td>
-            <td><%= r.adgroup_name %></td>
-            <td><%= r.ad_name %></td>
-            <td><%= Number(r.cost).toLocaleString() %></td>
-            <td><%= Number(r.impressions).toLocaleString() %></td>
-            <td><%= Number(r.clicks).toLocaleString() %></td>
-            <td><%= Number(r.installs).toLocaleString() %></td>
+            <% columnDefs.forEach(c => { %>
+              <% if (c.key === 'date') { %>
+                <td data-col="date"><%= r.date ? new Date(r.date).toISOString().slice(0,10) : '' %></td>
+              <% } else if (['cost','impressions','clicks','views','video_play','p25','p50','p75','p100','installs'].includes(c.key)) { %>
+                <td data-col="<%= c.key %>"><%= Number(r[c.key] || 0).toLocaleString() %></td>
+              <% } else { %>
+                <td data-col="<%= c.key %>"><%= r[c.key] %></td>
+              <% } %>
+            <% }) %>
           </tr>
         <% }) %>
       </table>
     </div>
     <% if (rows.length === 0) { %><p class="hint">데이터가 없습니다.</p><% } %>
   </div>
+
+  <script>
+    (function () {
+      const DEFAULT_VISIBLE = <%- JSON.stringify(columnDefs.filter(c => c.default).map(c => c.key)) %>;
+      const STORAGE_KEY = 'dashboardVisibleColumns';
+
+      function getVisible() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (Array.isArray(saved)) return saved;
+        } catch (e) {}
+        return DEFAULT_VISIBLE;
+      }
+
+      function applyVisibility(visible) {
+        document.querySelectorAll('#raw-table [data-col]').forEach((el) => {
+          el.style.display = visible.includes(el.dataset.col) ? '' : 'none';
+        });
+        document.querySelectorAll('.col-toggle').forEach((cb) => {
+          cb.checked = visible.includes(cb.dataset.col);
+        });
+      }
+
+      document.querySelectorAll('.col-toggle').forEach((cb) => {
+        cb.addEventListener('change', () => {
+          const visible = Array.from(document.querySelectorAll('.col-toggle:checked')).map((c) => c.dataset.col);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(visible));
+          applyVisibility(visible);
+        });
+      });
+
+      applyVisibility(getVisible());
+    })();
+  </script>
 </body>
 </html>
