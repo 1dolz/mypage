@@ -10,34 +10,10 @@
     <h1>매체 raw 허브</h1>
     <div>
       <a href="/">Raw 데이터</a>
+      <a href="/upload">업로드</a>
       <a href="/settings">설정</a>
       <a href="/logout">로그아웃</a>
     </div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-top:0;">수동 raw 업로드</h3>
-    <form method="POST" action="/upload" enctype="multipart/form-data">
-      <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
-        <div>
-          <label>매체</label>
-          <select name="source">
-            <% manualSources.forEach(m => { %>
-              <option value="<%= m.id %>"><%= m.label %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div>
-          <label>CSV/Excel 파일</label>
-          <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
-        </div>
-        <button type="submit">업로드</button>
-      </div>
-      <div class="hint">
-        업로드하면 해당 매체의 기존 데이터를 새 파일 내용으로 교체합니다.
-        매체 추가/수정은 <a href="/settings">설정 &gt; 수동 업로드 매체</a>에서 할 수 있습니다.
-      </div>
-    </form>
   </div>
 
   <div class="card">

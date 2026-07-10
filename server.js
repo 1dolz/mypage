@@ -76,8 +76,7 @@ app.get('/', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
   const rows = await db.queryRawData({ source, startDate, endDate });
   const sources = await db.distinctSources();
-  const manualSources = await db.getManualSources();
-  res.render('dashboard', { rows, sources, manualSources, filters: { source, startDate, endDate } });
+  res.render('dashboard', { rows, sources, filters: { source, startDate, endDate } });
 });
 
 // 특정 매체의 raw 데이터를 통째로 삭제 (테스트 데이터/이름 바뀐 매체 정리용)
@@ -144,6 +143,12 @@ app.get('/export.xlsx', requireLogin, async (req, res) => {
 
 // ===== 수동 raw 업로드 =====
 // 매체 목록과 컬럼 매핑은 더 이상 코드에 하드코딩하지 않고 manual_sources 테이블(=/settings 화면)에서 관리함.
+// 업로드는 대시보드에서 분리된 별도 화면으로 제공 (드래그앤드롭 지원)
+app.get('/upload', requireLogin, async (req, res) => {
+  const manualSources = await db.getManualSources();
+  res.render('upload', { manualSources });
+});
+
 app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
   try {
     const source = req.body.source;
