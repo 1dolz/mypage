@@ -1,35 +1,76 @@
+:root {
+  --primary-color: #2563eb; /* 포인트 컬러 (신뢰감을 주는 파란색) */
+  --primary-hover: #1d4ed8;
+  --danger-color: #dc2626; /* 경고/삭제용 빨간색 */
+  --border-color: #e5e7eb;
+  --bg-light: #f9fafb;
+}
+
 body {
   font-family: -apple-system, 'Malgun Gothic', sans-serif;
   max-width: 1100px;
   margin: 40px auto;
   padding: 0 20px;
   color: #1a1a1a;
-  background: #fafafa;
+  background: var(--bg-light);
 }
 h1 { font-size: 20px; margin-bottom: 4px; }
 .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .top-nav a { margin-left: 16px; color: #333; text-decoration: none; font-size: 14px; }
 .top-nav a:hover { text-decoration: underline; }
 
-.card { background: white; border: 1px solid #e5e5e5; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+.card {
+  background: white;
+  border: none;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
 
 label { display: block; font-size: 13px; color: #555; margin-top: 10px; margin-bottom: 4px; }
-input, select { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-button {
-  margin-top: 14px; padding: 9px 18px; background: #111; color: white;
-  border: none; border-radius: 6px; font-size: 14px; cursor: pointer;
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select {
+  height: 38px;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
 }
+input[type="file"] { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+button {
+  margin-top: 14px; height: 38px; padding: 0 18px; box-sizing: border-box;
+  background: var(--primary-color); color: white;
+  border: none; border-radius: 6px; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background-color 0.2s ease;
+}
+button:hover { background-color: var(--primary-hover); }
 button.secondary { background: #eee; color: #111; }
-button:hover { opacity: 0.85; }
+button.secondary:hover { background-color: #e0e0e0; }
+button.danger { background: white; color: var(--danger-color); border: 1px solid var(--danger-color); }
+button.danger:hover { background-color: var(--danger-color); color: white; }
 
 .table-wrap { overflow-x: auto; max-width: 100%; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: right; word-wrap: break-word; overflow-wrap: break-word; }
 th:nth-child(-n+5), td:nth-child(-n+5) { text-align: left; }
-th { background: #f5f5f5; position: sticky; top: 0; }
-tr:hover { background: #fafafa; }
+th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border-color); }
 
-.filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+/* raw 데이터 테이블: 짝수 행 옅은 배경(지브라 패턴) + 마우스오버 하이라이트로 가독성 향상 */
+#raw-table tr:nth-child(even) { background-color: var(--bg-light); }
+#raw-table tr:hover { background-color: #f3f4f6; }
+
+.filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.filters button { margin-top: 0; }
 
 .col-toggles { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 0 10px; }
 .col-toggle-label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #555; margin: 0; }
@@ -37,34 +78,36 @@ tr:hover { background: #fafafa; }
 
 .col-picker { margin: 14px 0 10px; }
 .col-picker-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-.col-picker-header select { font-size: 12px; padding: 5px 8px; }
+.col-picker-header select { height: auto; font-size: 12px; padding: 5px 8px; }
 .col-chip-list { display: flex; gap: 6px; flex-wrap: wrap; min-height: 30px; }
 .col-chip {
   display: inline-flex; align-items: center; gap: 6px; background: #f0f0f0; border: 1px solid #ddd;
   border-radius: 16px; padding: 4px 6px 4px 10px; font-size: 12px; color: #333; cursor: grab; user-select: none;
 }
 .col-chip.dragging { opacity: 0.4; }
-.col-chip.drag-over { border-color: #111; background: #e6e6e6; }
+.col-chip.drag-over { border-color: var(--primary-color); background: #e6e6e6; }
 .col-chip-handle { color: #999; font-size: 11px; }
 .col-chip-remove {
+  height: auto; margin-top: 0; display: inline; box-sizing: content-box;
   background: none; border: none; color: #999; cursor: pointer; font-size: 14px; line-height: 1;
-  padding: 0 2px; margin: 0;
+  padding: 0 2px;
 }
-.col-chip-remove:hover { color: #c00; }
+.col-chip-remove:hover { background: none; color: var(--danger-color); }
 
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #e5e5e5; }
 .tab-btn {
+  height: auto; display: inline-block; box-sizing: content-box;
   padding: 10px 16px; background: none; border: none; border-bottom: 2px solid transparent;
   color: #666; font-size: 14px; cursor: pointer; margin-top: 0;
 }
-.tab-btn.active { color: #111; border-bottom-color: #111; font-weight: 600; }
-.tab-btn:hover { opacity: 1; color: #111; }
+.tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 600; }
+.tab-btn:hover { background: none; color: #111; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 .field-row { margin-bottom: 14px; }
-.field-row input:not([type="checkbox"]):not([type="radio"]) { width: 100%; max-width: 420px; box-sizing: border-box; }
+.field-row input:not([type="checkbox"]):not([type="radio"]) { width: 100%; max-width: 420px; }
 .checkbox-label { display: flex !important; align-items: center; gap: 8px; margin-top: 10px; margin-bottom: 4px; cursor: pointer; }
 .checkbox-label input[type="checkbox"] { width: auto; margin: 0; flex-shrink: 0; }
 .login-box { max-width: 320px; margin: 100px auto; }
-.error { color: #c00; font-size: 13px; margin-top: 8px; }
+.error { color: var(--danger-color); font-size: 13px; margin-top: 8px; }
 .hint { color: #888; font-size: 12px; margin-top: 4px; }

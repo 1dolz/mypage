@@ -38,7 +38,7 @@
             </form>
             <form method="POST" action="/settings/delete" style="display:inline;">
               <input type="hidden" name="key" value="<%= s.key %>">
-              <button type="submit" class="secondary">삭제</button>
+              <button type="submit" class="danger">삭제</button>
             </form>
           </tr>
         <% }) %>
@@ -168,7 +168,7 @@
         <form method="POST" action="/settings/manual-sources/delete" style="display:inline;"
           onsubmit="return confirm('삭제하면 업로드 드롭다운에서 사라집니다. 이미 업로드된 raw 데이터는 남아있습니다. 계속할까요?');">
           <input type="hidden" name="id" value="<%= editingManual.id %>">
-          <button type="submit" class="secondary">삭제</button>
+          <button type="submit" class="danger">삭제</button>
         </form>
       <% } %>
     </div>
