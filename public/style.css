@@ -109,6 +109,14 @@ th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2p
 #raw-table tr:nth-child(even) { background-color: var(--bg-light); }
 #raw-table tr:hover { background-color: #f3f4f6; }
 
+/* 합계 행: 스크롤 박스 하단에 고정, 굵게 강조 */
+#raw-table tr.totals-row:hover { background: transparent; }
+#raw-table tr.totals-row td {
+  position: sticky; bottom: 0; z-index: 5;
+  background: #eef2f7; font-weight: 700; color: #1e293b;
+  border-top: 2px solid var(--border-color); border-bottom: none;
+}
+
 /* 상단 툴바: 필터/조회는 왼쪽, 내보내기는 오른쪽 끝으로 분리 */
 .toolbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .toolbar .filters { margin-bottom: 0; }

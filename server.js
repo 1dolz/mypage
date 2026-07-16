@@ -132,9 +132,11 @@ app.get('/debug/outbound-ip', requireLogin, async (req, res) => {
 app.get('/', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
   const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate });
+  const totals = await db.sumRawData(req.session.userId, { source, startDate, endDate });
   const sources = await db.distinctSources(req.session.userId);
   res.render('dashboard', {
     rows,
+    totals,
     sources,
     filters: { source, startDate, endDate },
     userEmail: req.session.userEmail,

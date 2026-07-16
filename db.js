@@ -320,6 +320,30 @@ async function distinctSources(userId) {
   return rows.map((r) => r.source);
 }
 
+// 필터에 맞는 '전체' 데이터의 지표 합계 + 행 수 (표시용 500행 제한과 무관하게 DB에서 집계)
+async function sumRawData(userId, { source, startDate, endDate }) {
+  const conditions = ['user_id = $1'];
+  const params = [userId];
+  let idx = 2;
+  if (source) {
+    conditions.push(`source = $${idx++}`);
+    params.push(source);
+  }
+  if (startDate) {
+    conditions.push(`date >= $${idx++}`);
+    params.push(startDate);
+  }
+  if (endDate) {
+    conditions.push(`date <= $${idx++}`);
+    params.push(endDate);
+  }
+  const where = `WHERE ${conditions.join(' AND ')}`;
+  const numericCols = ['cost', 'impressions', 'clicks', 'views', 'video_play', 'p25', 'p50', 'p75', 'p100', 'installs'];
+  const sumExprs = numericCols.map((c) => `COALESCE(SUM(${c}), 0) AS ${c}`).join(', ');
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS count, ${sumExprs} FROM raw_data ${where}`, params);
+  return rows[0];
+}
+
 module.exports = {
   pool,
   initDb,
@@ -335,6 +359,7 @@ module.exports = {
   replaceSourceData,
   queryRawData,
   distinctSources,
+  sumRawData,
   getManualSources,
   getManualSource,
   upsertManualSource,

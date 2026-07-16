@@ -112,6 +112,18 @@
                 <% }) %>
               </tr>
             <% }) %>
+            <% const t = (typeof totals === 'undefined' || !totals) ? {} : totals; %>
+            <tr class="totals-row">
+              <% columnDefs.forEach((c, i) => { %>
+                <% if (numericKeys.includes(c.key)) { %>
+                  <td data-col="<%= c.key %>"><%= Number(t[c.key] || 0).toLocaleString() %></td>
+                <% } else if (i === 0) { %>
+                  <td data-col="<%= c.key %>" title="합계 (<%= Number(t.count || 0).toLocaleString() %>건)">합계 (<%= Number(t.count || 0).toLocaleString() %>건)</td>
+                <% } else { %>
+                  <td data-col="<%= c.key %>"></td>
+                <% } %>
+              <% }) %>
+            </tr>
           </table>
         </div>
         <% if (rows.length === 0) { %><p class="hint">데이터가 없습니다.</p><% } %>
