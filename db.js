@@ -320,41 +320,6 @@ async function distinctSources(userId) {
   return rows.map((r) => r.source);
 }
 
-async function claimUnassignedData(userId) {
-  const { rows: unassignedSettings } = await pool.query('SELECT key FROM settings WHERE user_id IS NULL');
-  for (const row of unassignedSettings) {
-    const { rows: existing } = await pool.query('SELECT 1 FROM settings WHERE user_id = $1 AND key = $2', [
-      userId,
-      row.key,
-    ]);
-    if (existing.length > 0) {
-      await pool.query('DELETE FROM settings WHERE user_id IS NULL AND key = $1', [row.key]);
-    } else {
-      await pool.query('UPDATE settings SET user_id = $1 WHERE user_id IS NULL AND key = $2', [userId, row.key]);
-    }
-  }
-
-  const { rows: unassignedSources } = await pool.query('SELECT id FROM manual_sources WHERE user_id IS NULL');
-  for (const row of unassignedSources) {
-    const { rows: existing } = await pool.query('SELECT 1 FROM manual_sources WHERE user_id = $1 AND id = $2', [
-      userId,
-      row.id,
-    ]);
-    if (existing.length > 0) {
-      await pool.query('DELETE FROM manual_sources WHERE user_id IS NULL AND id = $1', [row.id]);
-    } else {
-      await pool.query('UPDATE manual_sources SET user_id = $1 WHERE user_id IS NULL AND id = $2', [
-        userId,
-        row.id,
-      ]);
-    }
-  }
-
-  await pool.query('UPDATE raw_data SET user_id = $1 WHERE user_id IS NULL', [userId]);
-
-  await initDb();
-}
-
 module.exports = {
   pool,
   initDb,
@@ -377,5 +342,4 @@ module.exports = {
   reorderManualSources,
   getManualDefaults,
   setManualDefaults,
-  claimUnassignedData,
 };

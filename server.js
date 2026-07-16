@@ -13,6 +13,7 @@ const { fetchGoogleBranding, exchangeAuthCodeForRefreshToken } = require('./fetc
 const { fetchTikTokAds, exchangeAuthCodeForAccessToken: exchangeTikTokAuthCode } = require('./fetchers/tiktok');
 const { fetchAppleAds } = require('./fetchers/appleAds');
 const { fetchAdpopcorn } = require('./fetchers/adpopcorn');
+const { fetchNaverAds } = require('./fetchers/naver');
 const { parseManualUploadFile, DEFAULT_FIELD_MAP } = require('./lib/manualUpload');
 
 const app = express();
@@ -132,27 +133,12 @@ app.get('/', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
   const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate });
   const sources = await db.distinctSources(req.session.userId);
-  const isAdminAccount =
-    !!process.env.ADMIN_EMAIL && (req.session.userEmail || '').toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
   res.render('dashboard', {
     rows,
     sources,
     filters: { source, startDate, endDate },
     userEmail: req.session.userEmail,
-    isAdminAccount,
-    claimed: req.query.claimed === '1',
   });
-});
-
-// 계정별 분리 도입 전에 쌓인, 아무 계정에도 연결 안 된 기존 데이터를 ADMIN_EMAIL 계정으로 가져옴.
-// 최초 이전이 누락됐을 때(예: 부트스트랩 마이그레이션이 돌기 전에 ADMIN_PASSWORD가 없었던 경우) 한 번만 쓰는 복구용.
-app.post('/admin/claim-legacy-data', requireLogin, async (req, res) => {
-  const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
-  if (!adminEmail || (req.session.userEmail || '').toLowerCase() !== adminEmail) {
-    return res.status(403).send('권한이 없습니다.');
-  }
-  await db.claimUnassignedData(req.session.userId);
-  res.redirect('/?claimed=1');
 });
 
 // 특정 매체의 raw 데이터를 통째로 삭제 (테스트 데이터/이름 바뀐 매체 정리용)
@@ -317,6 +303,15 @@ const MEDIA_SETTINGS_SCHEMA = [
         label: '집계할 캠페인명 (한 줄에 하나씩, 비워두면 전체 포함)',
         type: 'textarea',
       },
+    ],
+  },
+  {
+    id: 'naver',
+    label: '네이버',
+    fields: [
+      { key: 'NAVER_API_KEY', label: 'API Key' },
+      { key: 'NAVER_SECRET_KEY', label: 'Secret Key', type: 'password' },
+      { key: 'NAVER_CUSTOMER_ID', label: 'Customer ID' },
     ],
   },
 ];
@@ -509,6 +504,12 @@ async function runFetchersForUser(userId) {
     await fetchAdpopcorn(userId);
   } catch (err) {
     console.error(`[cron] (user ${userId}) Adpopcorn 수집 실패:`, err.message);
+  }
+
+  try {
+    await fetchNaverAds(userId);
+  } catch (err) {
+    console.error(`[cron] (user ${userId}) 네이버 수집 실패:`, err.message);
   }
 }
 
