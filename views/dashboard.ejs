@@ -17,6 +17,21 @@
     </div>
   </div>
 
+  <% if (claimed) { %><p style="color:#080;">기존 데이터를 이 계정으로 가져왔습니다.</p><% } %>
+
+  <% if (isAdminAccount) { %>
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div class="hint" style="margin:0;">
+          계정별 분리 도입 전에 쌓인 기존 데이터가 안 보이면, 아래 버튼으로 이 계정에 가져올 수 있어요. (이미 가져왔다면 다시 눌러도 안전합니다)
+        </div>
+        <form method="POST" action="/admin/claim-legacy-data" style="margin:0;">
+          <button type="submit" class="secondary" style="margin:0;">기존 데이터 가져오기</button>
+        </form>
+      </div>
+    </div>
+  <% } %>
+
   <div class="card">
     <form method="GET" action="/" class="filters">
       <div>

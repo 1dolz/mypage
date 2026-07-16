@@ -11,15 +11,13 @@ const pool = new Pool({
     : false,
 });
 
-// 기존에 1인 전용으로 쓰던 앱을 계정별로 분리하면서, ADMIN_PASSWORD로 로그인하던
-// 계정이 있으면 그대로 첫 계정으로 이전하고 기존 데이터도 그 계정 소유로 넘겨줌.
 async function ensureBootstrapUser() {
   const { rows } = await pool.query('SELECT COUNT(*) FROM users');
   const userCount = parseInt(rows[0].count, 10);
-  if (userCount > 0) return null; // 이미 계정이 있으면(=이미 이전 완료) 건드리지 않음
+  if (userCount > 0) return null;
 
   const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) return null; // 이전할 기존 계정이 없음 (완전 새 설치)
+  if (!adminPassword) return null;
 
   const email = (process.env.ADMIN_EMAIL || 'admin@thesmc.co.kr').toLowerCase();
   const passwordHash = await bcrypt.hash(adminPassword, 10);
@@ -30,7 +28,6 @@ async function ensureBootstrapUser() {
   return inserted[0] ? inserted[0].id : null;
 }
 
-// 서버 시작 시 필요한 테이블을 자동으로 만들어줍니다 (이미 있으면 건너뜀)
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -51,7 +48,7 @@ async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS raw_data (
       id SERIAL PRIMARY KEY,
-      source TEXT NOT NULL,           -- meta, tiktok, google_ads, adpopcorn, asa, tenping, valista, appier, x 등
+      source TEXT NOT NULL,
       date DATE,
       campaign_name TEXT,
       adgroup_name TEXT,
@@ -71,7 +68,6 @@ async function initDb() {
     );
   `);
 
-  // 수동 raw 업로드 매체 목록 + 컬럼 매핑 (하드코딩 대신 /settings 화면에서 추가/수정/삭제 가능)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS manual_sources (
       id TEXT PRIMARY KEY,
@@ -83,12 +79,8 @@ async function initDb() {
       sort_order INTEGER DEFAULT 0
     );
   `);
-  // 이미 배포돼있던 테이블에는 sort_order 컬럼이 없을 수 있으므로 안전하게 추가 (업로드 화면 카드 드래그 순서 저장용)
   await pool.query(`ALTER TABLE manual_sources ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;`);
 
-  // ===== 계정별 분리 마이그레이션 =====
-  // settings/manual_sources/raw_data 전부 user_id 컬럼을 추가해서 계정별로 나눔.
-  // 이미 있던 데이터는 ensureBootstrapUser()가 만든 첫 계정(예전 ADMIN_PASSWORD 계정) 소유로 옮김.
   await pool.query(`ALTER TABLE settings ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;`);
   await pool.query(`ALTER TABLE manual_sources ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;`);
   await pool.query(`ALTER TABLE raw_data ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;`);
@@ -100,8 +92,6 @@ async function initDb() {
     await pool.query('UPDATE raw_data SET user_id = $1 WHERE user_id IS NULL', [bootstrapUserId]);
   }
 
-  // user_id가 다 채워졌으면 NOT NULL + (계정별) 고유키로 확정. 주인 없는 행이 남아있으면
-  // (ADMIN_PASSWORD도 없이 기존 데이터만 있는 특이 케이스) 건드리지 않고 다음 시작 때 다시 시도함.
   const { rows: settingsNulls } = await pool.query('SELECT COUNT(*) FROM settings WHERE user_id IS NULL');
   if (parseInt(settingsNulls[0].count, 10) === 0) {
     await pool.query('ALTER TABLE settings ALTER COLUMN user_id SET NOT NULL');
@@ -124,19 +114,13 @@ async function initDb() {
   await pool.query('DROP INDEX IF EXISTS idx_raw_data_source_date;');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_raw_data_user_source_date ON raw_data(user_id, source, date);');
 
-  // 계정을 새로 만든 사람(=매체를 하나도 등록 안 한 계정)에게는 기본 설정값/매체 목록을 채워줌.
-  // 이미 데이터가 있는 계정(예: 이전된 기존 계정)은 그대로 두고 건드리지 않음.
   if (bootstrapUserId) {
     await seedDefaultsForUser(bootstrapUserId);
   }
 
-  // 예전 이름(asa_raw, x_raw)으로 저장된 raw_data가 있으면 새 이름으로 이전 (계정 무관하게 데이터 내용만 정리)
   await pool.query(`UPDATE raw_data SET source = 'apple' WHERE source = 'asa_raw'`);
   await pool.query(`UPDATE raw_data SET source = 'x' WHERE source = 'x_raw'`);
 
-  // 과거(기본값+재정의 병합 기능이 생기기 전)에는 매체별 field_map에 기본 컬럼명을 그대로 박아넣었던
-  // 데이터가 남아있을 수 있음. 지금은 기본값을 전역으로 관리하므로, 값이 내장 기본값과 정확히 같은
-  // 항목은 "실제 재정의"가 아니라고 보고 지워서 매체별 설정 화면을 깨끗하게 정리함.
   const { rows: existingManualSources } = await pool.query('SELECT user_id, id, field_map FROM manual_sources');
   for (const row of existingManualSources) {
     const fieldMap = row.field_map || {};
@@ -160,21 +144,22 @@ async function initDb() {
   }
 }
 
-// 새 계정이 만들어졌을 때 기본 설정값 + 시작용 매체 목록을 채워줌 (/signup에서 호출)
 async function seedDefaultsForUser(userId) {
   const defaults = {
     DELIMITER: '_',
     MARGIN_RATE: '0.85',
   };
   for (const [key, value] of Object.entries(defaults)) {
-    await pool.query(
-      `INSERT INTO settings (user_id, key, value) VALUES ($1, $2, $3) ON CONFLICT (user_id, key) DO NOTHING`,
-      [userId, key, value]
-    );
+    const { rows: existing } = await pool.query('SELECT 1 FROM settings WHERE user_id = $1 AND key = $2', [
+      userId,
+      key,
+    ]);
+    if (existing.length === 0) {
+      await pool.query('INSERT INTO settings (user_id, key, value) VALUES ($1, $2, $3)', [userId, key, value]);
+    }
   }
 }
 
-// ===== 계정 관리 =====
 async function createUser(email, passwordHash) {
   const normalizedEmail = email.toLowerCase().trim();
   const { rows } = await pool.query(
@@ -200,13 +185,11 @@ async function getAllUsers() {
   return rows;
 }
 
-// ===== 전역 기본 컬럼명 (계정별로 관리, /settings > 수동 업로드 매체 상단에서 설정) =====
 async function getManualDefaults(userId) {
   const raw = await getSetting(userId, MANUAL_DEFAULTS_SETTING_KEY, '');
   if (!raw) return { ...DEFAULT_FIELD_MAP };
   try {
     const parsed = JSON.parse(raw);
-    // 혹시 일부 필드만 저장돼 있어도 나머지는 내장 기본값으로 채움
     return { ...DEFAULT_FIELD_MAP, ...parsed };
   } catch (e) {
     return { ...DEFAULT_FIELD_MAP };
@@ -225,7 +208,6 @@ async function getManualSources(userId) {
   return rows;
 }
 
-// 업로드 화면에서 매체 카드를 드래그로 재배열했을 때 순서를 저장
 async function reorderManualSources(userId, orderedIds) {
   for (let i = 0; i < orderedIds.length; i++) {
     await pool.query('UPDATE manual_sources SET sort_order = $1 WHERE user_id = $2 AND id = $3', [
@@ -283,7 +265,6 @@ async function deleteSetting(userId, key) {
 }
 
 async function insertRawRows(userId, rows) {
-  // rows: [{source, date, campaign_name, adgroup_name, ad_name, cost, impressions, clicks, views, video_play, p25, p50, p75, p100, installs, extra}]
   for (const r of rows) {
     await pool.query(
       `INSERT INTO raw_data
@@ -300,7 +281,6 @@ async function insertRawRows(userId, rows) {
 }
 
 async function replaceSourceData(userId, source, rows) {
-  // 해당 매체의 기존 데이터를 지우고 새 데이터로 교체 (Apps Script의 clearContents 방식과 동일)
   await pool.query('DELETE FROM raw_data WHERE user_id = $1 AND source = $2', [userId, source]);
   await insertRawRows(userId, rows.map((r) => ({ ...r, source })));
 }
@@ -340,6 +320,41 @@ async function distinctSources(userId) {
   return rows.map((r) => r.source);
 }
 
+async function claimUnassignedData(userId) {
+  const { rows: unassignedSettings } = await pool.query('SELECT key FROM settings WHERE user_id IS NULL');
+  for (const row of unassignedSettings) {
+    const { rows: existing } = await pool.query('SELECT 1 FROM settings WHERE user_id = $1 AND key = $2', [
+      userId,
+      row.key,
+    ]);
+    if (existing.length > 0) {
+      await pool.query('DELETE FROM settings WHERE user_id IS NULL AND key = $1', [row.key]);
+    } else {
+      await pool.query('UPDATE settings SET user_id = $1 WHERE user_id IS NULL AND key = $2', [userId, row.key]);
+    }
+  }
+
+  const { rows: unassignedSources } = await pool.query('SELECT id FROM manual_sources WHERE user_id IS NULL');
+  for (const row of unassignedSources) {
+    const { rows: existing } = await pool.query('SELECT 1 FROM manual_sources WHERE user_id = $1 AND id = $2', [
+      userId,
+      row.id,
+    ]);
+    if (existing.length > 0) {
+      await pool.query('DELETE FROM manual_sources WHERE user_id IS NULL AND id = $1', [row.id]);
+    } else {
+      await pool.query('UPDATE manual_sources SET user_id = $1 WHERE user_id IS NULL AND id = $2', [
+        userId,
+        row.id,
+      ]);
+    }
+  }
+
+  await pool.query('UPDATE raw_data SET user_id = $1 WHERE user_id IS NULL', [userId]);
+
+  await initDb();
+}
+
 module.exports = {
   pool,
   initDb,
@@ -362,4 +377,5 @@ module.exports = {
   reorderManualSources,
   getManualDefaults,
   setManualDefaults,
+  claimUnassignedData,
 };

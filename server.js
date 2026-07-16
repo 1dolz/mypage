@@ -132,7 +132,27 @@ app.get('/', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
   const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate });
   const sources = await db.distinctSources(req.session.userId);
-  res.render('dashboard', { rows, sources, filters: { source, startDate, endDate }, userEmail: req.session.userEmail });
+  const isAdminAccount =
+    !!process.env.ADMIN_EMAIL && (req.session.userEmail || '').toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase();
+  res.render('dashboard', {
+    rows,
+    sources,
+    filters: { source, startDate, endDate },
+    userEmail: req.session.userEmail,
+    isAdminAccount,
+    claimed: req.query.claimed === '1',
+  });
+});
+
+// 계정별 분리 도입 전에 쌓인, 아무 계정에도 연결 안 된 기존 데이터를 ADMIN_EMAIL 계정으로 가져옴.
+// 최초 이전이 누락됐을 때(예: 부트스트랩 마이그레이션이 돌기 전에 ADMIN_PASSWORD가 없었던 경우) 한 번만 쓰는 복구용.
+app.post('/admin/claim-legacy-data', requireLogin, async (req, res) => {
+  const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
+  if (!adminEmail || (req.session.userEmail || '').toLowerCase() !== adminEmail) {
+    return res.status(403).send('권한이 없습니다.');
+  }
+  await db.claimUnassignedData(req.session.userId);
+  res.redirect('/?claimed=1');
 });
 
 // 특정 매체의 raw 데이터를 통째로 삭제 (테스트 데이터/이름 바뀐 매체 정리용)
