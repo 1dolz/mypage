@@ -16,92 +16,81 @@
     </div>
   </div>
 
-  <div class="card">
-    <form method="POST" action="/upload" enctype="multipart/form-data" id="upload-form">
-      <div class="field-row">
-        <label>매체</label>
-        <select name="source" style="max-width:300px;">
-          <% manualSources.forEach(m => { %>
-            <option value="<%= m.id %>"><%= m.label %></option>
-          <% }) %>
-        </select>
-      </div>
-
-      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="파일 업로드">
-        <div class="dropzone-icon">&#8593;</div>
-        <div class="dropzone-text">파일을 여기에 놓거나 클릭하여 업로드하세요</div>
-        <div class="dropzone-filename" id="dropzone-filename"></div>
-        <input type="file" name="file" id="file-input" accept=".csv,.xlsx,.xls" required style="display:none;">
-      </div>
-
-      <button type="submit">업로드</button>
-    </form>
-
-    <div class="hint" style="margin-top:10px;">
-      업로드하면 선택한 매체의 기존 raw 데이터를 새 파일 내용으로 전부 교체합니다.
-      매체 추가/컬럼 매핑 수정은 <a href="/settings">설정 &gt; 수동 업로드 매체</a>에서 할 수 있습니다.
-    </div>
+  <div class="hint" style="margin-bottom:14px;">
+    매체 카드에 파일을 끌어다 놓거나 클릭하면 바로 업로드됩니다. 업로드하면 해당 매체의 기존 raw 데이터가 새 파일 내용으로 전부 교체됩니다.
   </div>
 
-  <div class="card">
+  <div class="upload-media-grid">
+    <% manualSources.forEach(m => { %>
+      <div class="upload-media-card">
+        <div class="upload-media-card-title"><%= m.label %></div>
+        <form method="POST" action="/upload" enctype="multipart/form-data">
+          <input type="hidden" name="source" value="<%= m.id %>">
+          <div class="dropzone dropzone-sm" tabindex="0" role="button" aria-label="<%= m.label %> 파일 업로드">
+            <div class="dropzone-icon dropzone-icon-sm">&#8593;</div>
+            <div class="dropzone-text dropzone-text-sm">끌어다 놓거나 클릭</div>
+            <div class="dropzone-filename"></div>
+            <input type="file" name="file" accept=".csv,.xlsx,.xls" style="display:none;">
+          </div>
+        </form>
+      </div>
+    <% }) %>
+
+    <a href="/settings?manualId=new#tab-manual" class="upload-media-card upload-media-card-add">
+      <div class="upload-add-icon">+</div>
+      <div class="upload-add-text">신규 매체 추가</div>
+    </a>
+  </div>
+
+  <div class="card" style="margin-top:20px;">
     <details>
       <summary>권장 파일 형식 및 크기</summary>
       <div class="hint" style="margin-top:10px; margin-left:0;">
         지원 형식: .csv, .xlsx, .xls<br>
         파일 첫 부분에 날짜/캠페인/비용 등의 헤더 행이 있으면 자동으로 인식됩니다 (헤더 위에 안내 문구 등이 몇 줄 섞여 있어도 괜찮습니다).
+        컬럼 매핑/기본값 수정은 <a href="/settings">설정 &gt; 수동 업로드 매체</a>에서 할 수 있습니다.
       </div>
     </details>
   </div>
 
   <script>
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('file-input');
-    const filenameEl = document.getElementById('dropzone-filename');
-    const form = document.getElementById('upload-form');
+    document.querySelectorAll('.upload-media-card .dropzone').forEach((dropzone) => {
+      const form = dropzone.closest('form');
+      const fileInput = dropzone.querySelector('input[type="file"]');
+      const filenameEl = dropzone.querySelector('.dropzone-filename');
 
-    function updateFilename() {
-      if (fileInput.files && fileInput.files.length > 0) {
-        filenameEl.textContent = '선택된 파일: ' + fileInput.files[0].name;
-      } else {
-        filenameEl.textContent = '';
-      }
-    }
-
-    dropzone.addEventListener('click', () => fileInput.click());
-    dropzone.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        fileInput.click();
-      }
-    });
-
-    ['dragenter', 'dragover'].forEach((evt) => {
-      dropzone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        dropzone.classList.add('dragover');
-      });
-    });
-    ['dragleave', 'drop'].forEach((evt) => {
-      dropzone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('dragover');
-      });
-    });
-    dropzone.addEventListener('drop', (e) => {
-      const files = e.dataTransfer && e.dataTransfer.files;
-      if (files && files.length > 0) {
+      function handleFiles(files) {
+        if (!files || files.length === 0) return;
         fileInput.files = files;
-        updateFilename();
+        filenameEl.textContent = files[0].name;
+        form.submit();
       }
-    });
 
-    fileInput.addEventListener('change', updateFilename);
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          fileInput.click();
+        }
+      });
 
-    form.addEventListener('submit', (e) => {
-      if (!fileInput.files || fileInput.files.length === 0) {
-        e.preventDefault();
-        alert('업로드할 파일을 선택해주세요.');
-      }
+      ['dragenter', 'dragover'].forEach((evt) => {
+        dropzone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dropzone.classList.add('dragover');
+        });
+      });
+      ['dragleave', 'drop'].forEach((evt) => {
+        dropzone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dropzone.classList.remove('dragover');
+        });
+      });
+      dropzone.addEventListener('drop', (e) => {
+        handleFiles(e.dataTransfer && e.dataTransfer.files);
+      });
+
+      fileInput.addEventListener('change', () => handleFiles(fileInput.files));
     });
   </script>
 </body>

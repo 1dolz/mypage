@@ -134,3 +134,32 @@ th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2p
 
 details summary { cursor: pointer; font-size: 14px; color: #333; }
 details[open] summary { margin-bottom: 4px; }
+
+/* 업로드 화면: 운영 중인 매체 카드 그리드 (매체별로 카드 하나 + 카드 자체가 드롭존) */
+.upload-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.upload-media-card {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+.upload-media-card-title { font-size: 14px; font-weight: 600; color: #111; margin-bottom: 10px; }
+.upload-media-card form { margin: 0; }
+
+.dropzone-sm { margin: 0; padding: 24px 10px; border-radius: 8px; }
+.dropzone-icon-sm { width: 32px; height: 32px; font-size: 15px; margin-bottom: 8px; }
+.dropzone-text-sm { font-size: 12px; }
+.dropzone-sm .dropzone-filename { font-size: 12px; word-break: break-all; }
+
+.upload-media-card-add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-decoration: none; color: #999; border: 2px dashed #ddd; background: transparent;
+  box-shadow: none; min-height: 128px; transition: border-color 0.2s ease, color 0.2s ease;
+}
+.upload-media-card-add:hover { border-color: var(--primary-color); color: var(--primary-color); }
+.upload-add-icon { font-size: 28px; line-height: 1; margin-bottom: 6px; }
+.upload-add-text { font-size: 13px; }
