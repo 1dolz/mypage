@@ -33,6 +33,9 @@ h1 { font-size: 20px; margin-bottom: 4px; }
 
 label { display: block; font-size: 13px; color: #555; margin-top: 10px; margin-bottom: 4px; }
 
+/* 폼 컨트롤(input/select/textarea/button)은 기본적으로 body 폰트를 상속하지 않으므로 명시적으로 상속 → Pretendard 적용 */
+input, select, textarea, button { font-family: inherit; }
+
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 select {
   height: 38px;
@@ -126,11 +129,31 @@ th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2p
 .filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .filters button { margin-top: 0; }
 
-/* 시스템/위험 액션: 일반 조회 영역과 완전히 분리해 테이블 하단에 배치 */
-.system-actions { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); }
-.system-actions-label { align-self: center; font-size: 12px; color: #94a3b8; margin-right: 4px; }
-.system-action-form { display: inline-flex; align-items: flex-end; gap: 8px; margin: 0; }
-.system-action-form button { margin-top: 0; }
+/* 관리 작업 바 (카드 맨 위): 자동수집(좌) / 매체선택+삭제(우) */
+.admin-bar { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+.admin-bar-label { align-self: center; font-size: 12px; color: #94a3b8; margin-right: 4px; }
+.admin-bar-right { margin-left: auto; display: flex; align-items: flex-end; gap: 8px; }
+.admin-action-form { display: inline-flex; align-items: flex-end; gap: 8px; margin: 0; }
+.admin-action-form button { margin-top: 0; }
+
+/* 내보내기: 버튼 하나 → 클릭 시 CSV/Excel 선택 메뉴 (details/summary) */
+.export-menu { position: relative; }
+.export-toggle {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  height: 38px; padding: 0 18px; box-sizing: border-box; border-radius: 6px;
+  background: #eee; color: #111; font-size: 14px; user-select: none;
+}
+.export-toggle::-webkit-details-marker { display: none; }
+.export-toggle::marker { content: ''; }
+.export-toggle:hover { background: #e0e0e0; }
+.export-menu[open] .export-toggle { background: #e0e0e0; }
+.export-menu-list {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20;
+  display: flex; flex-direction: column; gap: 4px; min-width: 170px;
+  background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 6px;
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.18);
+}
+.export-menu-list button { margin-top: 0; width: 100%; }
 
 /* 좌: 항목 선택 패널 / 우: 데이터 패널 2단 레이아웃 */
 .ws-layout { display: flex; align-items: flex-start; gap: 20px; }
