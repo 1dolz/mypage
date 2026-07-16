@@ -149,6 +149,15 @@ app.get('/upload', requireLogin, async (req, res) => {
   res.render('upload', { manualSources });
 });
 
+// 업로드 화면에서 매체 카드를 드래그로 재배열했을 때 순서를 저장 (JSON 바디: { order: ['apple', 'x', ...] })
+app.post('/settings/manual-sources/reorder', requireLogin, async (req, res) => {
+  const { order } = req.body;
+  if (Array.isArray(order) && order.length > 0) {
+    await db.reorderManualSources(order);
+  }
+  res.json({ ok: true });
+});
+
 app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
   try {
     const source = req.body.source;

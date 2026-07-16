@@ -52,9 +52,12 @@ async function initDb() {
       field_map JSONB NOT NULL DEFAULT '{}',
       cost_multiplier NUMERIC DEFAULT 1,
       apply_margin_rate BOOLEAN DEFAULT false,
-      ad_name_prefix TEXT DEFAULT ''
+      ad_name_prefix TEXT DEFAULT '',
+      sort_order INTEGER DEFAULT 0
     );
   `);
+  // 이미 배포돼있던 테이블에는 sort_order 컬럼이 없을 수 있으므로 안전하게 추가 (업로드 화면 카드 드래그 순서 저장용)
+  await pool.query(`ALTER TABLE manual_sources ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;`);
 
   // 기본 설정값이 없으면 채워둠
   const defaults = {
@@ -148,8 +151,15 @@ async function setManualDefaults(map) {
 }
 
 async function getManualSources() {
-  const { rows } = await pool.query('SELECT * FROM manual_sources ORDER BY id');
+  const { rows } = await pool.query('SELECT * FROM manual_sources ORDER BY sort_order, id');
   return rows;
+}
+
+// 업로드 화면에서 매체 카드를 드래그로 재배열했을 때 순서를 저장
+async function reorderManualSources(orderedIds) {
+  for (let i = 0; i < orderedIds.length; i++) {
+    await pool.query('UPDATE manual_sources SET sort_order = $1 WHERE id = $2', [i, orderedIds[i]]);
+  }
 }
 
 async function getManualSource(id) {
@@ -269,6 +279,7 @@ module.exports = {
   getManualSource,
   upsertManualSource,
   deleteManualSource,
+  reorderManualSources,
   getManualDefaults,
   setManualDefaults,
 };

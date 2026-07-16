@@ -17,13 +17,27 @@
   </div>
 
   <div class="hint" style="margin-bottom:14px;">
-    매체 카드에 파일을 끌어다 놓거나 클릭하면 바로 업로드됩니다. 업로드하면 해당 매체의 기존 raw 데이터가 새 파일 내용으로 전부 교체됩니다.
+    카드를 드래그하면 순서를 바꿀 수 있고, 카드에 파일을 끌어다 놓거나 클릭하면 바로 업로드됩니다.
+    업로드하면 해당 매체의 기존 raw 데이터가 새 파일 내용으로 전부 교체됩니다.
   </div>
 
-  <div class="upload-media-grid">
+  <div class="upload-media-grid" id="upload-media-grid">
     <% manualSources.forEach(m => { %>
-      <div class="upload-media-card">
-        <div class="upload-media-card-title"><%= m.label %></div>
+      <div class="upload-media-card" draggable="true" data-id="<%= m.id %>">
+        <div class="upload-media-card-header">
+          <div class="upload-media-card-title-group">
+            <span class="upload-media-card-handle" title="드래그해서 순서 변경">&#10495;</span>
+            <span class="upload-media-card-title"><%= m.label %></span>
+          </div>
+          <div class="upload-media-card-actions">
+            <a href="/settings?manualId=<%= encodeURIComponent(m.id) %>#tab-manual" class="icon-btn" title="수정">&#9998;</a>
+            <form method="POST" action="/settings/manual-sources/delete" class="icon-form"
+              onsubmit="return confirm('&quot;<%= m.label %>&quot; 매체를 삭제할까요? 업로드된 raw 데이터는 남아있습니다.');">
+              <input type="hidden" name="id" value="<%= m.id %>">
+              <button type="submit" class="icon-btn icon-btn-danger" title="삭제">&times;</button>
+            </form>
+          </div>
+        </div>
         <form method="POST" action="/upload" enctype="multipart/form-data">
           <input type="hidden" name="source" value="<%= m.id %>">
           <div class="dropzone dropzone-sm" tabindex="0" role="button" aria-label="<%= m.label %> 파일 업로드">
@@ -54,6 +68,7 @@
   </div>
 
   <script>
+    // ===== 매체별 드롭존: 파일을 끌어다 놓거나 클릭하면 바로 해당 매체로 업로드 =====
     document.querySelectorAll('.upload-media-card .dropzone').forEach((dropzone) => {
       const form = dropzone.closest('form');
       const fileInput = dropzone.querySelector('input[type="file"]');
@@ -92,6 +107,52 @@
 
       fileInput.addEventListener('change', () => handleFiles(fileInput.files));
     });
+
+    // ===== 매체 카드 드래그로 순서 변경 =====
+    (function () {
+      const grid = document.getElementById('upload-media-grid');
+
+      function mediaCards() {
+        return Array.from(grid.querySelectorAll('.upload-media-card[draggable="true"]'));
+      }
+
+      function persistOrder() {
+        const order = mediaCards().map((c) => c.dataset.id);
+        fetch('/settings/manual-sources/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order }),
+        }).catch((err) => console.error('카드 순서 저장 실패:', err));
+      }
+
+      mediaCards().forEach((card) => {
+        card.addEventListener('dragstart', (e) => {
+          // 수정/삭제 아이콘 영역에서 시작된 드래그는 카드 이동으로 취급하지 않음
+          if (e.target.closest('.upload-media-card-actions')) {
+            e.preventDefault();
+            return;
+          }
+          card.classList.add('dragging');
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+          mediaCards().forEach((c) => c.classList.remove('drag-over'));
+          persistOrder();
+        });
+
+        card.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          const dragging = grid.querySelector('.upload-media-card.dragging');
+          if (!dragging || dragging === card) return;
+          mediaCards().forEach((c) => c.classList.remove('drag-over'));
+          card.classList.add('drag-over');
+          const rect = card.getBoundingClientRect();
+          const before = e.clientX < rect.left + rect.width / 2;
+          grid.insertBefore(dragging, before ? card : card.nextSibling);
+        });
+      });
+    })();
   </script>
 </body>
 </html>
