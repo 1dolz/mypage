@@ -2,7 +2,7 @@
   --primary-color: #2563eb; /* 포인트 컬러 (신뢰감을 주는 파란색) */
   --primary-hover: #1d4ed8;
   --danger-color: #dc2626; /* 경고/삭제용 빨간색 */
-  --border-color: #e5e7eb;
+  --border-color: #e2e8f0;
   --bg-light: #f9fafb;
 }
 
@@ -35,11 +35,11 @@ select {
   height: 38px;
   box-sizing: border-box;
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 14px;
 }
-input[type="file"] { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+input[type="file"] { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--primary-color);
@@ -56,21 +56,58 @@ button {
 button:hover { background-color: var(--primary-hover); }
 button.secondary { background: #eee; color: #111; }
 button.secondary:hover { background-color: #e0e0e0; }
-button.danger { background: white; color: var(--danger-color); border: 1px solid var(--danger-color); }
-button.danger:hover { background-color: var(--danger-color); color: white; }
+button.danger { background: var(--danger-color); color: white; border: none; }
+button.danger:hover { background-color: #b91c1c; }
 
 .table-wrap { overflow-x: auto; max-width: 100%; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
-th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: right; word-wrap: break-word; overflow-wrap: break-word; }
-th:nth-child(-n+5), td:nth-child(-n+5) { text-align: left; }
+th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: left; }
+/* 본문 셀은 한 줄 고정 + 넘치면 말줄임(...) — 행 높이가 제각각 늘어나는 것 방지 (전체 이름은 title 툴팁으로 확인) */
+#raw-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 정렬은 '위치'(nth-child)가 아니라 '컬럼 종류'(data-col) 기준 — 드래그로 순서를 바꿔도 유지된다 */
+#raw-table th[data-col="cost"], #raw-table td[data-col="cost"],
+#raw-table th[data-col="impressions"], #raw-table td[data-col="impressions"],
+#raw-table th[data-col="clicks"], #raw-table td[data-col="clicks"],
+#raw-table th[data-col="views"], #raw-table td[data-col="views"],
+#raw-table th[data-col="video_play"], #raw-table td[data-col="video_play"],
+#raw-table th[data-col="p25"], #raw-table td[data-col="p25"],
+#raw-table th[data-col="p50"], #raw-table td[data-col="p50"],
+#raw-table th[data-col="p75"], #raw-table td[data-col="p75"],
+#raw-table th[data-col="p100"], #raw-table td[data-col="p100"],
+#raw-table th[data-col="installs"], #raw-table td[data-col="installs"] { text-align: right; }
+/* 폭: 날짜/매체/숫자는 고정, 캠페인·광고그룹·광고명은 남는 폭을 나눠 갖고 말줄임 처리 */
+#raw-table th[data-col="date"] { width: 96px; }
+#raw-table th[data-col="source"] { width: 78px; }
+#raw-table th[data-col="cost"],
+#raw-table th[data-col="impressions"],
+#raw-table th[data-col="clicks"],
+#raw-table th[data-col="views"],
+#raw-table th[data-col="video_play"],
+#raw-table th[data-col="p25"],
+#raw-table th[data-col="p50"],
+#raw-table th[data-col="p75"],
+#raw-table th[data-col="p100"],
+#raw-table th[data-col="installs"] { width: 86px; }
 th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border-color); }
 
 /* raw 데이터 테이블: 짝수 행 옅은 배경(지브라 패턴) + 마우스오버 하이라이트로 가독성 향상 */
 #raw-table tr:nth-child(even) { background-color: var(--bg-light); }
 #raw-table tr:hover { background-color: #f3f4f6; }
 
+/* 상단 툴바: 필터/조회는 왼쪽, 내보내기는 오른쪽 끝으로 분리 */
+.toolbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.toolbar .filters { margin-bottom: 0; }
+.toolbar-right { display: flex; gap: 8px; align-items: flex-end; }
+.toolbar-right button { margin-top: 0; }
+
 .filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .filters button { margin-top: 0; }
+
+/* 시스템/위험 액션: 일반 조회 영역과 완전히 분리해 테이블 하단에 배치 */
+.system-actions { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+.system-actions-label { align-self: center; font-size: 12px; color: #94a3b8; margin-right: 4px; }
+.system-action-form { display: inline-flex; align-items: flex-end; gap: 8px; margin: 0; }
+.system-action-form button { margin-top: 0; }
 
 .col-toggles { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 0 10px; }
 .col-toggle-label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #555; margin: 0; }
@@ -81,12 +118,14 @@ th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2p
 .col-picker-header select { height: auto; font-size: 12px; padding: 5px 8px; }
 .col-chip-list { display: flex; gap: 6px; flex-wrap: wrap; min-height: 30px; }
 .col-chip {
-  display: inline-flex; align-items: center; gap: 6px; background: #f0f0f0; border: 1px solid #ddd;
-  border-radius: 16px; padding: 4px 6px 4px 10px; font-size: 12px; color: #333; cursor: grab; user-select: none;
+  display: inline-flex; align-items: center; gap: 6px; background: #f1f5f9; border: none;
+  border-radius: 16px; padding: 5px 8px 5px 10px; font-size: 12px; color: #334155; cursor: grab; user-select: none;
+  transition: background-color 0.15s ease;
 }
+.col-chip:hover { background: #e8edf3; }
 .col-chip.dragging { opacity: 0.4; }
-.col-chip.drag-over { border-color: var(--primary-color); background: #e6e6e6; }
-.col-chip-handle { color: #999; font-size: 11px; }
+.col-chip.drag-over { box-shadow: inset 0 0 0 2px var(--primary-color); background: #e2e8f0; }
+.col-chip-handle { color: #cbd5e1; font-size: 10px; cursor: grab; }
 .col-chip-remove {
   height: auto; margin-top: 0; display: inline; box-sizing: content-box;
   background: none; border: none; color: #999; cursor: pointer; font-size: 14px; line-height: 1;

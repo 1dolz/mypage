@@ -18,47 +18,34 @@
   </div>
 
   <div class="card">
-    <form method="GET" action="/" class="filters">
-      <div>
-        <label>매체</label>
-        <select name="source">
-          <option value="">전체</option>
-          <% sources.forEach(s => { %>
-            <option value="<%= s %>" <%= filters.source === s ? 'selected' : '' %>><%= s %></option>
-          <% }) %>
-        </select>
+    <div class="toolbar">
+      <form id="filter-form" method="GET" action="/" class="filters">
+        <div>
+          <label>매체</label>
+          <select name="source">
+            <option value="">전체</option>
+            <% sources.forEach(s => { %>
+              <option value="<%= s %>" <%= filters.source === s ? 'selected' : '' %>><%= s %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label>시작일</label>
+          <input type="date" name="startDate" value="<%= filters.startDate || '' %>">
+        </div>
+        <div>
+          <label>종료일</label>
+          <input type="date" name="endDate" value="<%= filters.endDate || '' %>">
+        </div>
+        <div style="align-self:end;">
+          <button type="submit">조회</button>
+        </div>
+      </form>
+      <div class="toolbar-right">
+        <button type="submit" form="filter-form" class="secondary" formaction="/export.csv" formtarget="_blank">CSV로 내보내기</button>
+        <button type="submit" form="filter-form" class="secondary" formaction="/export.xlsx" formtarget="_blank">Excel로 내보내기</button>
       </div>
-      <div>
-        <label>시작일</label>
-        <input type="date" name="startDate" value="<%= filters.startDate || '' %>">
-      </div>
-      <div>
-        <label>종료일</label>
-        <input type="date" name="endDate" value="<%= filters.endDate || '' %>">
-      </div>
-      <div style="align-self:end;">
-        <button type="submit">조회</button>
-      </div>
-      <div style="align-self:end;">
-        <button type="submit" class="secondary" formaction="/export.csv" formtarget="_blank">CSV로 내보내기</button>
-      </div>
-      <div style="align-self:end;">
-        <button type="submit" class="secondary" formaction="/export.xlsx" formtarget="_blank">Excel로 내보내기</button>
-      </div>
-    </form>
-    <form method="POST" action="/run-now" style="display:inline;">
-      <button type="submit" class="secondary">지금 자동수집 실행</button>
-    </form>
-
-    <form method="POST" action="/delete-source" style="display:inline; margin-left:8px;"
-      onsubmit="return confirm('선택한 매체의 raw 데이터를 전부 삭제합니다. 계속할까요?');">
-      <select name="source">
-        <% sources.forEach(s => { %>
-          <option value="<%= s %>"><%= s %></option>
-        <% }) %>
-      </select>
-      <button type="submit" class="danger">선택 매체 데이터 삭제</button>
-    </form>
+    </div>
 
     <%
       const columnDefs = [
@@ -108,7 +95,7 @@
               <% } else if (['cost','impressions','clicks','views','video_play','p25','p50','p75','p100','installs'].includes(c.key)) { %>
                 <td data-col="<%= c.key %>"><%= Number(r[c.key] || 0).toLocaleString() %></td>
               <% } else { %>
-                <td data-col="<%= c.key %>"><%= r[c.key] %></td>
+                <td data-col="<%= c.key %>" title="<%= r[c.key] %>"><%= r[c.key] %></td>
               <% } %>
             <% }) %>
           </tr>
@@ -116,6 +103,22 @@
       </table>
     </div>
     <% if (rows.length === 0) { %><p class="hint">데이터가 없습니다.</p><% } %>
+
+    <div class="system-actions">
+      <span class="system-actions-label">관리 작업</span>
+      <form method="POST" action="/run-now" class="system-action-form">
+        <button type="submit" class="secondary">지금 자동수집 실행</button>
+      </form>
+      <form method="POST" action="/delete-source" class="system-action-form"
+        onsubmit="return confirm('선택한 매체의 raw 데이터를 전부 삭제합니다. 계속할까요?');">
+        <select name="source">
+          <% sources.forEach(s => { %>
+            <option value="<%= s %>"><%= s %></option>
+          <% }) %>
+        </select>
+        <button type="submit" class="danger">선택 매체 데이터 삭제</button>
+      </form>
+    </div>
   </div>
 
   <script>
