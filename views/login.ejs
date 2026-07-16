@@ -9,11 +9,16 @@
   <div class="login-box card">
     <h1>매체 raw 허브</h1>
     <form method="POST" action="/login">
+      <label>이메일</label>
+      <input type="email" name="email" autofocus style="width:100%; box-sizing:border-box;">
       <label>비밀번호</label>
-      <input type="password" name="password" autofocus style="width:100%; box-sizing:border-box;">
+      <input type="password" name="password" style="width:100%; box-sizing:border-box;">
       <button type="submit" style="width:100%;">로그인</button>
     </form>
     <% if (error) { %><div class="error"><%= error %></div><% } %>
+    <div class="hint" style="margin-top:14px;">
+      계정이 없으신가요? <a href="/signup">회원가입 (@<%= allowedDomain %> 이메일만 가능)</a>
+    </div>
   </div>
 </body>
 </html>

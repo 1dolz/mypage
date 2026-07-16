@@ -91,14 +91,14 @@ async function runGoogleAdsQuery({ accessToken, developerToken, customerId, mccI
 // 필요한 설정값 (/settings > Google Ads 탭):
 //   GOOGLE_DEVELOPER_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
 //   GOOGLE_CUSTOMER_ID, GOOGLE_MCC_ID, GOOGLE_REFRESH_TOKEN
-async function fetchGoogleBranding() {
-  const developerToken = await db.getSetting('GOOGLE_DEVELOPER_TOKEN');
-  const clientId = await db.getSetting('GOOGLE_CLIENT_ID');
-  const clientSecret = await db.getSetting('GOOGLE_CLIENT_SECRET');
-  const customerId = await db.getSetting('GOOGLE_CUSTOMER_ID');
-  const mccId = await db.getSetting('GOOGLE_MCC_ID');
-  const refreshToken = await db.getSetting('GOOGLE_REFRESH_TOKEN');
-  const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
+async function fetchGoogleBranding(userId) {
+  const developerToken = await db.getSetting(userId, 'GOOGLE_DEVELOPER_TOKEN');
+  const clientId = await db.getSetting(userId, 'GOOGLE_CLIENT_ID');
+  const clientSecret = await db.getSetting(userId, 'GOOGLE_CLIENT_SECRET');
+  const customerId = await db.getSetting(userId, 'GOOGLE_CUSTOMER_ID');
+  const mccId = await db.getSetting(userId, 'GOOGLE_MCC_ID');
+  const refreshToken = await db.getSetting(userId, 'GOOGLE_REFRESH_TOKEN');
+  const marginRate = parseFloat(await db.getSetting(userId, 'MARGIN_RATE', '0.85')) || 0.85;
 
   if (!developerToken || !clientId || !clientSecret || !customerId || !mccId || !refreshToken) {
     console.log('[google_ads] 설정값 누락 - /settings > Google Ads 탭을 확인하세요.');
@@ -193,7 +193,7 @@ async function fetchGoogleBranding() {
     };
   });
 
-  await db.replaceSourceData('google', rows);
+  await db.replaceSourceData(userId, 'google', rows);
   console.log(`[google_ads] 완료: ${rows.length}개 행 저장 (${startDate} ~ ${endDate})`);
 }
 

@@ -122,13 +122,13 @@ async function fetchKeywordReport({ campaignId, startDate, endDate, accessToken,
 
 // ===== Apple Search Ads 키워드 레벨 데이터 수집 =====
 // 필요한 설정값 (/settings > Apple 탭): APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY, APPLE_ORG_ID
-async function fetchAppleAds() {
-  const clientId = await db.getSetting('APPLE_CLIENT_ID');
-  const teamId = await db.getSetting('APPLE_TEAM_ID');
-  const keyId = await db.getSetting('APPLE_KEY_ID');
-  const privateKey = await db.getSetting('APPLE_PRIVATE_KEY');
-  const orgId = await db.getSetting('APPLE_ORG_ID');
-  const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
+async function fetchAppleAds(userId) {
+  const clientId = await db.getSetting(userId, 'APPLE_CLIENT_ID');
+  const teamId = await db.getSetting(userId, 'APPLE_TEAM_ID');
+  const keyId = await db.getSetting(userId, 'APPLE_KEY_ID');
+  const privateKey = await db.getSetting(userId, 'APPLE_PRIVATE_KEY');
+  const orgId = await db.getSetting(userId, 'APPLE_ORG_ID');
+  const marginRate = parseFloat(await db.getSetting(userId, 'MARGIN_RATE', '0.85')) || 0.85;
 
   if (!clientId || !teamId || !keyId || !privateKey || !orgId) {
     console.log('[apple] 설정값 누락 - /settings > Apple 탭에서 인증 정보를 등록하세요.');
@@ -188,7 +188,7 @@ async function fetchAppleAds() {
     return;
   }
 
-  await db.replaceSourceData('apple', rows);
+  await db.replaceSourceData(userId, 'apple', rows);
   console.log(`[apple] 완료: ${rows.length}개 행 저장 (${startDate} ~ ${endDate})`);
 }
 

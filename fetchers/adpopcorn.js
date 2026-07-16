@@ -26,9 +26,9 @@ function unitPriceFor(campaignName) {
 // 필요한 설정값 (/settings > Adpopcorn 탭):
 //   ADPOPCORN_ACCESS_TOKEN - 리포트 API 액세스 토큰
 //   ADPOPCORN_FILTER_CAMPAIGNS - 집계할 캠페인명 목록 (한 줄에 하나씩). 비워두면 전체 캠페인 포함.
-async function fetchAdpopcorn() {
-  const accessToken = await db.getSetting('ADPOPCORN_ACCESS_TOKEN');
-  const filterCampaignsRaw = await db.getSetting('ADPOPCORN_FILTER_CAMPAIGNS');
+async function fetchAdpopcorn(userId) {
+  const accessToken = await db.getSetting(userId, 'ADPOPCORN_ACCESS_TOKEN');
+  const filterCampaignsRaw = await db.getSetting(userId, 'ADPOPCORN_FILTER_CAMPAIGNS');
 
   if (!accessToken) {
     console.log('[adpopcorn] 설정값 누락 - /settings > Adpopcorn 탭에서 Access Token을 등록하세요.');
@@ -82,7 +82,7 @@ async function fetchAdpopcorn() {
     return;
   }
 
-  await db.replaceSourceData('adpopcorn', rows);
+  await db.replaceSourceData(userId, 'adpopcorn', rows);
   console.log(`[adpopcorn] 완료: ${rows.length}개 행 저장 (${startDate} ~ ${endDate})`);
 }
 

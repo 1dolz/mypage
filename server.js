@@ -5,6 +5,7 @@ const pgSession = require('connect-pg-simple')(session);
 const multer = require('multer');
 const XLSX = require('xlsx');
 const cron = require('node-cron');
+const bcrypt = require('bcryptjs');
 
 const db = require('./db');
 const { fetchMetaAds } = require('./fetchers/meta');
@@ -37,22 +38,77 @@ app.use(
   })
 );
 
-// ===== 로그인 보호 =====
+// ===== 계정/로그인 =====
+// 회사 이메일(@thesmc.co.kr)만 가입 가능. 필요하면 ALLOWED_EMAIL_DOMAIN 환경변수로 바꿀 수 있음.
+const ALLOWED_EMAIL_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'thesmc.co.kr').toLowerCase();
+
+function isAllowedEmail(email) {
+  return String(email || '').toLowerCase().trim().endsWith('@' + ALLOWED_EMAIL_DOMAIN);
+}
+
 function requireLogin(req, res, next) {
-  if (req.session.loggedIn) return next();
+  if (req.session.userId) return next();
   res.redirect('/login');
 }
 
 app.get('/login', (req, res) => {
-  res.render('login', { error: null });
+  if (req.session.userId) return res.redirect('/');
+  res.render('login', { error: null, allowedDomain: ALLOWED_EMAIL_DOMAIN });
 });
 
-app.post('/login', (req, res) => {
-  if (req.body.password === process.env.ADMIN_PASSWORD) {
-    req.session.loggedIn = true;
-    return res.redirect('/');
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = email ? await db.getUserByEmail(email) : null;
+    const ok = user && (await bcrypt.compare(password || '', user.password_hash));
+    if (!ok) {
+      return res.render('login', { error: '이메일 또는 비밀번호가 틀렸습니다.', allowedDomain: ALLOWED_EMAIL_DOMAIN });
+    }
+    req.session.userId = user.id;
+    req.session.userEmail = user.email;
+    res.redirect('/');
+  } catch (err) {
+    console.error(err);
+    res.render('login', { error: '로그인 처리 중 오류가 발생했습니다.', allowedDomain: ALLOWED_EMAIL_DOMAIN });
   }
-  res.render('login', { error: '비밀번호가 틀렸습니다.' });
+});
+
+app.get('/signup', (req, res) => {
+  if (req.session.userId) return res.redirect('/');
+  res.render('signup', { error: null, allowedDomain: ALLOWED_EMAIL_DOMAIN });
+});
+
+app.post('/signup', async (req, res) => {
+  const { email, password, passwordConfirm } = req.body;
+  const renderError = (error) => res.render('signup', { error, allowedDomain: ALLOWED_EMAIL_DOMAIN });
+
+  if (!email || !password) {
+    return renderError('이메일과 비밀번호를 입력해주세요.');
+  }
+  if (!isAllowedEmail(email)) {
+    return renderError(`@${ALLOWED_EMAIL_DOMAIN} 이메일로만 가입할 수 있습니다.`);
+  }
+  if (password.length < 8) {
+    return renderError('비밀번호는 8자 이상이어야 합니다.');
+  }
+  if (password !== passwordConfirm) {
+    return renderError('비밀번호가 일치하지 않습니다.');
+  }
+
+  try {
+    const existing = await db.getUserByEmail(email);
+    if (existing) {
+      return renderError('이미 가입된 이메일입니다.');
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await db.createUser(email, passwordHash);
+    req.session.userId = user.id;
+    req.session.userEmail = user.email;
+    res.redirect('/');
+  } catch (err) {
+    console.error(err);
+    renderError('가입 처리 중 오류가 발생했습니다.');
+  }
 });
 
 app.get('/logout', (req, res) => {
@@ -74,16 +130,16 @@ app.get('/debug/outbound-ip', requireLogin, async (req, res) => {
 // ===== 대시보드 (raw 데이터 조회) =====
 app.get('/', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
-  const rows = await db.queryRawData({ source, startDate, endDate });
-  const sources = await db.distinctSources();
-  res.render('dashboard', { rows, sources, filters: { source, startDate, endDate } });
+  const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate });
+  const sources = await db.distinctSources(req.session.userId);
+  res.render('dashboard', { rows, sources, filters: { source, startDate, endDate }, userEmail: req.session.userEmail });
 });
 
 // 특정 매체의 raw 데이터를 통째로 삭제 (테스트 데이터/이름 바뀐 매체 정리용)
 app.post('/delete-source', requireLogin, async (req, res) => {
   const { source } = req.body;
   if (source) {
-    await db.pool.query('DELETE FROM raw_data WHERE source = $1', [source]);
+    await db.pool.query('DELETE FROM raw_data WHERE user_id = $1 AND source = $2', [req.session.userId, source]);
   }
   res.redirect('/');
 });
@@ -114,7 +170,7 @@ function toCsvValue(v) {
 
 app.get('/export.csv', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
-  const rows = await db.queryRawData({ source, startDate, endDate, limit: 50000 });
+  const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate, limit: 50000 });
   const { headers, dataRows } = buildExportRows(rows);
 
   const lines = [headers, ...dataRows].map((row) => row.map(toCsvValue).join(','));
@@ -128,7 +184,7 @@ app.get('/export.csv', requireLogin, async (req, res) => {
 
 app.get('/export.xlsx', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
-  const rows = await db.queryRawData({ source, startDate, endDate, limit: 50000 });
+  const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate, limit: 50000 });
   const { headers, dataRows } = buildExportRows(rows);
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
@@ -145,23 +201,24 @@ app.get('/export.xlsx', requireLogin, async (req, res) => {
 // 매체 목록과 컬럼 매핑은 더 이상 코드에 하드코딩하지 않고 manual_sources 테이블(=/settings 화면)에서 관리함.
 // 업로드는 대시보드에서 분리된 별도 화면으로 제공 (드래그앤드롭 지원)
 app.get('/upload', requireLogin, async (req, res) => {
-  const manualSources = await db.getManualSources();
-  res.render('upload', { manualSources });
+  const manualSources = await db.getManualSources(req.session.userId);
+  res.render('upload', { manualSources, userEmail: req.session.userEmail });
 });
 
 // 업로드 화면에서 매체 카드를 드래그로 재배열했을 때 순서를 저장 (JSON 바디: { order: ['apple', 'x', ...] })
 app.post('/settings/manual-sources/reorder', requireLogin, async (req, res) => {
   const { order } = req.body;
   if (Array.isArray(order) && order.length > 0) {
-    await db.reorderManualSources(order);
+    await db.reorderManualSources(req.session.userId, order);
   }
   res.json({ ok: true });
 });
 
 app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
   try {
+    const userId = req.session.userId;
     const source = req.body.source;
-    const sourceConfig = await db.getManualSource(source);
+    const sourceConfig = await db.getManualSource(userId, source);
     if (!sourceConfig) {
       return res.status(400).send('알 수 없는 매체입니다. (/settings에서 매체를 먼저 등록해주세요)');
     }
@@ -169,12 +226,12 @@ app.post('/upload', requireLogin, upload.single('file'), async (req, res) => {
 
     const filename = req.file.originalname || '';
     const ext = filename.slice(filename.lastIndexOf('.') + 1).toLowerCase();
-    const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
-    const defaultsMap = await db.getManualDefaults();
+    const marginRate = parseFloat(await db.getSetting(userId, 'MARGIN_RATE', '0.85')) || 0.85;
+    const defaultsMap = await db.getManualDefaults(userId);
 
     const rows = parseManualUploadFile(req.file.buffer, ext, sourceConfig, { marginRate, defaultsMap });
 
-    await db.replaceSourceData(source, rows);
+    await db.replaceSourceData(userId, source, rows);
     res.redirect(`/?source=${source}`);
   } catch (err) {
     console.error(err);
@@ -245,7 +302,8 @@ const MEDIA_SETTINGS_SCHEMA = [
 ];
 
 app.get('/settings', requireLogin, async (req, res) => {
-  const settings = await db.getSettings();
+  const userId = req.session.userId;
+  const settings = await db.getSettings(userId);
   const settingsMap = {};
   settings.forEach((s) => {
     settingsMap[s.key] = s.value;
@@ -256,8 +314,8 @@ app.get('/settings', requireLogin, async (req, res) => {
   const mediaKeys = new Set(MEDIA_SETTINGS_SCHEMA.flatMap((m) => m.fields.map((f) => f.key)));
   const generalSettings = settings.filter((s) => !mediaKeys.has(s.key));
 
-  const manualSources = await db.getManualSources();
-  const manualDefaults = await db.getManualDefaults();
+  const manualSources = await db.getManualSources(userId);
+  const manualDefaults = await db.getManualDefaults(userId);
 
   // 수동 업로드 매체 탭에서 선택된 매체 (드롭다운으로 고름). 없으면 첫 번째 매체, 그것도 없으면 "새 매체 추가" 상태.
   const selectedManualId =
@@ -273,6 +331,7 @@ app.get('/settings', requireLogin, async (req, res) => {
     selectedManualId,
     selectedManual,
     saved: req.query.saved === '1',
+    userEmail: req.session.userEmail,
   });
 });
 
@@ -294,7 +353,7 @@ app.post('/settings/manual-defaults', requireLogin, async (req, res) => {
   for (const key of MANUAL_UPLOAD_FIELD_KEYS) {
     map[key] = req.body[`default_${key}`] || '';
   }
-  await db.setManualDefaults(map);
+  await db.setManualDefaults(req.session.userId, map);
   res.redirect('/settings?saved=1#tab-manual');
 });
 
@@ -311,7 +370,7 @@ app.post('/settings/manual-sources', requireLogin, async (req, res) => {
     field_map[key] = req.body[`field_${key}`] || '';
   }
 
-  await db.upsertManualSource({
+  await db.upsertManualSource(req.session.userId, {
     id: cleanId,
     label: label || cleanId,
     field_map,
@@ -325,13 +384,13 @@ app.post('/settings/manual-sources', requireLogin, async (req, res) => {
 
 app.post('/settings/manual-sources/delete', requireLogin, async (req, res) => {
   const { id } = req.body;
-  if (id) await db.deleteManualSource(id);
+  if (id) await db.deleteManualSource(req.session.userId, id);
   res.redirect('/settings?saved=1#tab-manual');
 });
 
 app.post('/settings', requireLogin, async (req, res) => {
   const { key, value } = req.body;
-  if (key) await db.setSetting(key.trim(), value || '');
+  if (key) await db.setSetting(req.session.userId, key.trim(), value || '');
   res.redirect('/settings?saved=1');
 });
 
@@ -342,7 +401,7 @@ app.post('/settings/media', requireLogin, async (req, res) => {
 
   for (const { key } of group.fields) {
     if (fields[key] !== undefined) {
-      await db.setSetting(key, fields[key]);
+      await db.setSetting(req.session.userId, key, fields[key]);
     }
   }
   res.redirect('/settings?saved=1');
@@ -350,15 +409,16 @@ app.post('/settings/media', requireLogin, async (req, res) => {
 
 app.post('/settings/delete', requireLogin, async (req, res) => {
   const { key } = req.body;
-  if (key) await db.deleteSetting(key);
+  if (key) await db.deleteSetting(req.session.userId, key);
   res.redirect('/settings?saved=1');
 });
 
 // Google Ads Refresh Token 최초 발급 (OAuth 인증 코드 → Refresh Token 교환)
 app.post('/settings/google-ads/exchange-code', requireLogin, async (req, res) => {
   try {
-    const clientId = await db.getSetting('GOOGLE_CLIENT_ID');
-    const clientSecret = await db.getSetting('GOOGLE_CLIENT_SECRET');
+    const userId = req.session.userId;
+    const clientId = await db.getSetting(userId, 'GOOGLE_CLIENT_ID');
+    const clientSecret = await db.getSetting(userId, 'GOOGLE_CLIENT_SECRET');
     const { authCode } = req.body;
 
     if (!clientId || !clientSecret) {
@@ -369,7 +429,7 @@ app.post('/settings/google-ads/exchange-code', requireLogin, async (req, res) =>
     }
 
     const refreshToken = await exchangeAuthCodeForRefreshToken({ clientId, clientSecret, authCode });
-    await db.setSetting('GOOGLE_REFRESH_TOKEN', refreshToken);
+    await db.setSetting(userId, 'GOOGLE_REFRESH_TOKEN', refreshToken);
     res.redirect('/settings?saved=1');
   } catch (err) {
     res.status(500).send('Refresh Token 발급 실패: ' + err.message);
@@ -379,74 +439,87 @@ app.post('/settings/google-ads/exchange-code', requireLogin, async (req, res) =>
 // TikTok Access Token 최초 발급 (App ID/Secret/Auth Code → Access Token + Advertiser ID 교환)
 app.post('/settings/tiktok/exchange-code', requireLogin, async (req, res) => {
   try {
-    const appId = await db.getSetting('TIKTOK_APP_ID');
-    const secret = await db.getSetting('TIKTOK_APP_SECRET');
-    const authCode = await db.getSetting('TIKTOK_AUTH_CODE');
+    const userId = req.session.userId;
+    const appId = await db.getSetting(userId, 'TIKTOK_APP_ID');
+    const secret = await db.getSetting(userId, 'TIKTOK_APP_SECRET');
+    const authCode = await db.getSetting(userId, 'TIKTOK_AUTH_CODE');
 
     if (!appId || !secret || !authCode) {
       return res.status(400).send('App ID / Secret / Auth Code를 먼저 저장해주세요.');
     }
 
     const { accessToken, advertiserId } = await exchangeTikTokAuthCode({ appId, secret, authCode });
-    await db.setSetting('TIKTOK_ACCESS_TOKEN', accessToken);
-    if (advertiserId) await db.setSetting('TIKTOK_ADVERTISER_ID', advertiserId);
+    await db.setSetting(userId, 'TIKTOK_ACCESS_TOKEN', accessToken);
+    if (advertiserId) await db.setSetting(userId, 'TIKTOK_ADVERTISER_ID', advertiserId);
     res.redirect('/settings?saved=1');
   } catch (err) {
     res.status(500).send('TikTok Access Token 발급 실패: ' + err.message);
   }
 });
 
-// ===== 매체별 자동 수집 함수 자리 (순서대로 채워 넣는 중) =====
-async function runAllFetchers() {
-  console.log('[cron] 매체 자동 수집 시작');
+// ===== 매체별 자동 수집 (계정별로 각자의 인증 정보를 사용) =====
+async function runFetchersForUser(userId) {
+  console.log(`[cron] 매체 자동 수집 시작 (user ${userId})`);
 
   try {
-    await fetchMetaAds();
+    await fetchMetaAds(userId);
   } catch (err) {
-    console.error('[cron] Meta 수집 실패:', err.message);
+    console.error(`[cron] (user ${userId}) Meta 수집 실패:`, err.message);
   }
 
   try {
-    await fetchGoogleBranding();
+    await fetchGoogleBranding(userId);
   } catch (err) {
-    console.error('[cron] Google Ads 수집 실패:', err.message);
+    console.error(`[cron] (user ${userId}) Google Ads 수집 실패:`, err.message);
   }
 
   try {
-    await fetchTikTokAds();
+    await fetchTikTokAds(userId);
   } catch (err) {
-    console.error('[cron] TikTok 수집 실패:', err.message);
+    console.error(`[cron] (user ${userId}) TikTok 수집 실패:`, err.message);
   }
 
   try {
-    await fetchAppleAds();
+    await fetchAppleAds(userId);
   } catch (err) {
-    console.error('[cron] Apple Search Ads 수집 실패:', err.message);
+    console.error(`[cron] (user ${userId}) Apple Search Ads 수집 실패:`, err.message);
   }
 
   try {
-    await fetchAdpopcorn();
+    await fetchAdpopcorn(userId);
   } catch (err) {
-    console.error('[cron] Adpopcorn 수집 실패:', err.message);
+    console.error(`[cron] (user ${userId}) Adpopcorn 수집 실패:`, err.message);
   }
 }
 
-// 매일 오전 9시 (Asia/Seoul) 자동 실행
+// 가입된 모든 계정을 순서대로 돌면서 각자의 인증 정보로 자동 수집 (cron이 호출)
+async function runAllFetchers() {
+  const users = await db.getAllUsers();
+  for (const user of users) {
+    await runFetchersForUser(user.id);
+  }
+}
+
+// 매일 오전 9시 (Asia/Seoul) 자동 실행 - 계정 전체를 순서대로 수집
 cron.schedule('0 9 * * *', runAllFetchers, { timezone: 'Asia/Seoul' });
 
-// 수동으로 즉시 실행해보고 싶을 때 쓰는 엔드포인트
+// 수동으로 즉시 실행해보고 싶을 때 쓰는 엔드포인트 - 현재 로그인한 계정만 실행
 app.post('/run-now', requireLogin, async (req, res) => {
-  await runAllFetchers();
+  await runFetchersForUser(req.session.userId);
   res.redirect('/');
 });
 
 const PORT = process.env.PORT || 3000;
 
-db.initDb()
-  .then(() => {
-    app.listen(PORT, () => console.log(`서버 실행 중: http://localhost:${PORT}`));
-  })
-  .catch((err) => {
-    console.error('DB 초기화 실패:', err);
-    process.exit(1);
-  });
+if (require.main === module) {
+  db.initDb()
+    .then(() => {
+      app.listen(PORT, () => console.log(`서버 실행 중: http://localhost:${PORT}`));
+    })
+    .catch((err) => {
+      console.error('DB 초기화 실패:', err);
+      process.exit(1);
+    });
+}
+
+module.exports = app;

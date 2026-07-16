@@ -41,11 +41,11 @@ function getActionTotal(arr) {
 //   META_APP_ID, META_APP_SECRET, META_AD_ACCOUNT_ID, META_ACCESS_TOKEN
 // 최초 실행 시 META_ACCESS_TOKEN(단기 토큰)을 장기 토큰으로 교환해 META_LONG_TOKEN에 저장하고,
 // 그 다음부터는 META_LONG_TOKEN을 사용합니다 (만료되면 META_ACCESS_TOKEN을 새로 받아 갱신 필요).
-async function fetchMetaAds() {
-  const appId = await db.getSetting('META_APP_ID');
-  const appSecret = await db.getSetting('META_APP_SECRET');
-  const adAccountId = await db.getSetting('META_AD_ACCOUNT_ID');
-  const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
+async function fetchMetaAds(userId) {
+  const appId = await db.getSetting(userId, 'META_APP_ID');
+  const appSecret = await db.getSetting(userId, 'META_APP_SECRET');
+  const adAccountId = await db.getSetting(userId, 'META_AD_ACCOUNT_ID');
+  const marginRate = parseFloat(await db.getSetting(userId, 'MARGIN_RATE', '0.85')) || 0.85;
 
   if (!appId || !appSecret || !adAccountId) {
     console.log(
@@ -54,12 +54,12 @@ async function fetchMetaAds() {
     return;
   }
 
-  let token = await db.getSetting('META_LONG_TOKEN');
-  const shortToken = await db.getSetting('META_ACCESS_TOKEN');
+  let token = await db.getSetting(userId, 'META_LONG_TOKEN');
+  const shortToken = await db.getSetting(userId, 'META_ACCESS_TOKEN');
 
   if (!token && shortToken) {
     token = await exchangeLongLivedToken({ appId, appSecret, shortToken });
-    await db.setSetting('META_LONG_TOKEN', token);
+    await db.setSetting(userId, 'META_LONG_TOKEN', token);
     console.log('[meta] 장기 토큰 발급 및 저장 완료');
   }
 
@@ -136,7 +136,7 @@ async function fetchMetaAds() {
     extra: row,
   }));
 
-  await db.replaceSourceData('meta', rows);
+  await db.replaceSourceData(userId, 'meta', rows);
   console.log(`[meta] 완료: ${rows.length}개 행 저장 (${firstOfMonth} ~ ${yesterday})`);
 }
 

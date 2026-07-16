@@ -12,6 +12,7 @@
       <a href="/">Raw 데이터</a>
       <a href="/upload">업로드</a>
       <a href="/settings">설정</a>
+      <% if (userEmail) { %><span class="hint" style="margin-left:16px;"><%= userEmail %></span><% } %>
       <a href="/logout">로그아웃</a>
     </div>
   </div>

@@ -45,10 +45,10 @@ function cleanAdName(rawAdName) {
 
 // ===== TikTok 데이터 수집 =====
 // 필요한 설정값 (/settings > TikTok 탭): TIKTOK_ACCESS_TOKEN, TIKTOK_ADVERTISER_ID
-async function fetchTikTokAds() {
-  const token = await db.getSetting('TIKTOK_ACCESS_TOKEN');
-  const advertiserId = await db.getSetting('TIKTOK_ADVERTISER_ID');
-  const marginRate = parseFloat(await db.getSetting('MARGIN_RATE', '0.85')) || 0.85;
+async function fetchTikTokAds(userId) {
+  const token = await db.getSetting(userId, 'TIKTOK_ACCESS_TOKEN');
+  const advertiserId = await db.getSetting(userId, 'TIKTOK_ADVERTISER_ID');
+  const marginRate = parseFloat(await db.getSetting(userId, 'MARGIN_RATE', '0.85')) || 0.85;
 
   if (!token || !advertiserId) {
     console.log('[tiktok] 설정값 누락 - /settings > TikTok 탭에서 Access Token / Advertiser ID를 등록하세요.');
@@ -150,7 +150,7 @@ async function fetchTikTokAds() {
     };
   });
 
-  await db.replaceSourceData('tiktok', rows);
+  await db.replaceSourceData(userId, 'tiktok', rows);
   console.log(`[tiktok] 완료: ${rows.length}개 행 저장 (${startDate} ~ ${endDate})`);
 }
 
