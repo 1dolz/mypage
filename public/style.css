@@ -59,7 +59,15 @@ button.secondary:hover { background-color: #e0e0e0; }
 button.danger { background: var(--danger-color); color: white; border: none; }
 button.danger:hover { background-color: #b91c1c; }
 
-.table-wrap { overflow-x: auto; max-width: 100%; }
+/* 데이터 영역만 자체 박스로 스크롤(가로+세로). 표가 길어도 페이지 전체 길이는 고정돼 하단 '관리 작업'에 쉽게 닿는다.
+   헤더(th)는 position:sticky라 이 박스 안에서 스크롤해도 열 제목이 상단에 고정된다. */
+.table-wrap {
+  max-width: 100%;
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: left; }
 /* 본문 셀은 한 줄 고정 + 넘치면 말줄임(...) — 행 높이가 제각각 늘어나는 것 방지 (전체 이름은 title 툴팁으로 확인) */
@@ -75,9 +83,13 @@ th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: left; }
 #raw-table th[data-col="p75"], #raw-table td[data-col="p75"],
 #raw-table th[data-col="p100"], #raw-table td[data-col="p100"],
 #raw-table th[data-col="installs"], #raw-table td[data-col="installs"] { text-align: right; }
-/* 폭: 날짜/매체/숫자는 고정, 캠페인·광고그룹·광고명은 남는 폭을 나눠 갖고 말줄임 처리 */
+/* 폭: 모든 컬럼에 명시적 폭 지정. 컬럼을 많이 켜면 표가 넓어져 가로 스크롤되고,
+   텍스트 3개 컬럼(캠페인/광고그룹/광고명)이 찌그러져 사라지지 않는다. */
 #raw-table th[data-col="date"] { width: 96px; }
 #raw-table th[data-col="source"] { width: 78px; }
+#raw-table th[data-col="campaign_name"] { width: 170px; }
+#raw-table th[data-col="adgroup_name"] { width: 170px; }
+#raw-table th[data-col="ad_name"] { width: 170px; }
 #raw-table th[data-col="cost"],
 #raw-table th[data-col="impressions"],
 #raw-table th[data-col="clicks"],
@@ -108,6 +120,41 @@ th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2p
 .system-actions-label { align-self: center; font-size: 12px; color: #94a3b8; margin-right: 4px; }
 .system-action-form { display: inline-flex; align-items: flex-end; gap: 8px; margin: 0; }
 .system-action-form button { margin-top: 0; }
+
+/* 좌: 항목 선택 패널 / 우: 데이터 패널 2단 레이아웃 */
+.ws-layout { display: flex; align-items: flex-start; gap: 20px; }
+.data-panel { flex: 1; min-width: 0; } /* min-width:0 이라야 표가 넘칠 때 flex 항목이 늘지 않고 박스 안에서 가로 스크롤된다 */
+
+.column-panel {
+  flex-shrink: 0; width: 210px; box-sizing: border-box;
+  border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; background: #fff;
+}
+.column-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.column-panel-title { font-size: 13px; font-weight: 700; color: #334155; }
+.panel-toggle {
+  height: 24px; width: 24px; margin: 0; padding: 0; flex-shrink: 0;
+  background: #f1f5f9; color: #475569; border: none; border-radius: 6px; font-size: 10px; line-height: 1; cursor: pointer;
+}
+.panel-toggle:hover { background: #e2e8f0; color: #1e293b; }
+.column-group { margin-bottom: 12px; }
+.column-group-title { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: #94a3b8; margin-bottom: 6px; }
+.col-check {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 1px; padding: 4px 6px;
+  font-size: 13px; color: #334155; border-radius: 6px; cursor: pointer;
+}
+.col-check:hover { background: #f8fafc; }
+.col-check input[type="checkbox"] { width: auto; height: auto; margin: 0; flex-shrink: 0; cursor: pointer; }
+
+/* 접힌 상태: 본문/제목 숨기고 토글 버튼만 남긴다 */
+.ws-layout.is-collapsed .column-panel { width: auto; padding: 8px; }
+.ws-layout.is-collapsed .column-panel-body,
+.ws-layout.is-collapsed .column-panel-title { display: none; }
+.ws-layout.is-collapsed .column-panel-head { margin-bottom: 0; }
+
+/* 헤더 드래그로 컬럼 순서 변경 */
+#raw-table th { cursor: grab; user-select: none; }
+#raw-table th.col-dragging { opacity: 0.4; }
+#raw-table th.col-drag-over { box-shadow: inset 2px 0 0 var(--primary-color); }
 
 .col-toggles { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 0 10px; }
 .col-toggle-label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #555; margin: 0; }
