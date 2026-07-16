@@ -1,3 +1,6 @@
+/* Pretendard 웹폰트 (jsDelivr CDN · 가변폰트 동적 서브셋 — 필요한 글자만 내려받아 가볍다) */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+
 :root {
   --primary-color: #2563eb; /* 포인트 컬러 (신뢰감을 주는 파란색) */
   --primary-hover: #1d4ed8;
@@ -7,7 +10,7 @@
 }
 
 body {
-  font-family: -apple-system, 'Malgun Gothic', sans-serif;
+  font-family: 'Pretendard Variable', -apple-system, 'Malgun Gothic', sans-serif;
   max-width: 1100px;
   margin: 40px auto;
   padding: 0 20px;
@@ -155,30 +158,6 @@ th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2p
 #raw-table th { cursor: grab; user-select: none; }
 #raw-table th.col-dragging { opacity: 0.4; }
 #raw-table th.col-drag-over { box-shadow: inset 2px 0 0 var(--primary-color); }
-
-.col-toggles { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 14px 0 10px; }
-.col-toggle-label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: #555; margin: 0; }
-.col-toggle-label input { margin: 0; }
-
-.col-picker { margin: 14px 0 10px; }
-.col-picker-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-.col-picker-header select { height: auto; font-size: 12px; padding: 5px 8px; }
-.col-chip-list { display: flex; gap: 6px; flex-wrap: wrap; min-height: 30px; }
-.col-chip {
-  display: inline-flex; align-items: center; gap: 6px; background: #f1f5f9; border: none;
-  border-radius: 16px; padding: 5px 8px 5px 10px; font-size: 12px; color: #334155; cursor: grab; user-select: none;
-  transition: background-color 0.15s ease;
-}
-.col-chip:hover { background: #e8edf3; }
-.col-chip.dragging { opacity: 0.4; }
-.col-chip.drag-over { box-shadow: inset 0 0 0 2px var(--primary-color); background: #e2e8f0; }
-.col-chip-handle { color: #cbd5e1; font-size: 10px; cursor: grab; }
-.col-chip-remove {
-  height: auto; margin-top: 0; display: inline; box-sizing: content-box;
-  background: none; border: none; color: #999; cursor: pointer; font-size: 14px; line-height: 1;
-  padding: 0 2px;
-}
-.col-chip-remove:hover { background: none; color: var(--danger-color); }
 
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #e5e5e5; }
 .tab-btn {
