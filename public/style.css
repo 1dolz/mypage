@@ -78,34 +78,15 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: f
 th, td { border-bottom: 1px solid #eee; padding: 7px 10px; text-align: left; }
 /* 본문 셀은 한 줄 고정 + 넘치면 말줄임(...) — 행 높이가 제각각 늘어나는 것 방지 (전체 이름은 title 툴팁으로 확인) */
 #raw-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* 정렬은 '위치'(nth-child)가 아니라 '컬럼 종류'(data-col) 기준 — 드래그로 순서를 바꿔도 유지된다 */
-#raw-table th[data-col="cost"], #raw-table td[data-col="cost"],
-#raw-table th[data-col="impressions"], #raw-table td[data-col="impressions"],
-#raw-table th[data-col="clicks"], #raw-table td[data-col="clicks"],
-#raw-table th[data-col="views"], #raw-table td[data-col="views"],
-#raw-table th[data-col="video_play"], #raw-table td[data-col="video_play"],
-#raw-table th[data-col="p25"], #raw-table td[data-col="p25"],
-#raw-table th[data-col="p50"], #raw-table td[data-col="p50"],
-#raw-table th[data-col="p75"], #raw-table td[data-col="p75"],
-#raw-table th[data-col="p100"], #raw-table td[data-col="p100"],
-#raw-table th[data-col="installs"], #raw-table td[data-col="installs"] { text-align: right; }
-/* 폭: 모든 컬럼에 명시적 폭 지정. 컬럼을 많이 켜면 표가 넓어져 가로 스크롤되고,
-   텍스트 3개 컬럼(캠페인/광고그룹/광고명)이 찌그러져 사라지지 않는다. */
+/* 정렬: 숫자·계산 지표(.num)는 우측 정렬 — 컬럼 종류 기준이라 드래그로 순서를 바꿔도 유지된다 */
+#raw-table th.num, #raw-table td.num { text-align: right; }
+/* 폭: 텍스트 컬럼은 넓게, 숫자/계산 컬럼은 일정 폭. 컬럼이 많으면 표가 넓어져 가로 스크롤된다. */
 #raw-table th[data-col="date"] { width: 96px; }
 #raw-table th[data-col="source"] { width: 78px; }
-#raw-table th[data-col="campaign_name"] { width: 170px; }
-#raw-table th[data-col="adgroup_name"] { width: 170px; }
+#raw-table th[data-col="campaign_name"],
+#raw-table th[data-col="adgroup_name"],
 #raw-table th[data-col="ad_name"] { width: 170px; }
-#raw-table th[data-col="cost"],
-#raw-table th[data-col="impressions"],
-#raw-table th[data-col="clicks"],
-#raw-table th[data-col="views"],
-#raw-table th[data-col="video_play"],
-#raw-table th[data-col="p25"],
-#raw-table th[data-col="p50"],
-#raw-table th[data-col="p75"],
-#raw-table th[data-col="p100"],
-#raw-table th[data-col="installs"] { width: 86px; }
+#raw-table th.num { width: 92px; }
 th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--border-color); }
 
 /* raw 데이터 테이블: 짝수 행 옅은 배경(지브라 패턴) + 마우스오버 하이라이트로 가독성 향상 */

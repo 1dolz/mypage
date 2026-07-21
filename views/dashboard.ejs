@@ -24,22 +24,44 @@
       { key: 'campaign_name', label: '캠페인', default: true, group: 'dim' },
       { key: 'adgroup_name', label: '광고그룹', default: true, group: 'dim' },
       { key: 'ad_name', label: '광고명', default: true, group: 'dim' },
-      { key: 'cost', label: '비용', default: true, group: 'metric' },
-      { key: 'impressions', label: '노출', default: true, group: 'metric' },
-      { key: 'clicks', label: '클릭', default: true, group: 'metric' },
-      { key: 'installs', label: '설치', default: true, group: 'metric' },
-      { key: 'views', label: '조회수', default: false, group: 'metric' },
-      { key: 'video_play', label: '6초 재생', default: false, group: 'metric' },
-      { key: 'p25', label: '25% 시청', default: false, group: 'metric' },
-      { key: 'p50', label: '50% 시청', default: false, group: 'metric' },
-      { key: 'p75', label: '75% 시청', default: false, group: 'metric' },
-      { key: 'p100', label: '100% 시청', default: false, group: 'metric' },
+      { key: 'cost', label: '비용', default: true, group: 'metric', num: true },
+      { key: 'impressions', label: '노출', default: true, group: 'metric', num: true },
+      { key: 'clicks', label: '클릭', default: true, group: 'metric', num: true },
+      { key: 'installs', label: '설치', default: true, group: 'metric', num: true },
+      { key: 'purchases', label: '구매', default: false, group: 'metric', num: true },
+      { key: 'revenue', label: '매출', default: false, group: 'metric', num: true },
+      { key: 'views', label: '조회수', default: false, group: 'metric', num: true },
+      { key: 'video_play', label: '6초 재생', default: false, group: 'metric', num: true },
+      { key: 'p25', label: '25% 시청', default: false, group: 'metric', num: true },
+      { key: 'p50', label: '50% 시청', default: false, group: 'metric', num: true },
+      { key: 'p75', label: '75% 시청', default: false, group: 'metric', num: true },
+      { key: 'p100', label: '100% 시청', default: false, group: 'metric', num: true },
+      { key: 'ctr', label: 'CTR', default: false, group: 'eff', derived: true, unit: 'pct' },
+      { key: 'cpc', label: 'CPC', default: false, group: 'eff', derived: true, unit: 'won' },
+      { key: 'cpa', label: 'CPA', default: false, group: 'eff', derived: true, unit: 'won' },
+      { key: 'roas', label: 'ROAS', default: false, group: 'eff', derived: true, unit: 'pct' },
     ];
-    const numericKeys = ['cost','impressions','clicks','views','video_play','p25','p50','p75','p100','installs'];
     const groups = [
       { id: 'dim', title: '차원', items: columnDefs.filter(c => c.group === 'dim') },
       { id: 'metric', title: '지표', items: columnDefs.filter(c => c.group === 'metric') },
+      { id: 'eff', title: '효율 (계산)', items: columnDefs.filter(c => c.group === 'eff') },
     ];
+    const num = (v) => Number(v || 0);
+    // 파생(계산) 지표. 합계 행도 동일 함수로 계산 → 분자·분모에 '합계값'을 넣으면 자동으로 '합의 비율'이 된다
+    function calcDerived(key, o) {
+      const cost = num(o.cost), clicks = num(o.clicks), imp = num(o.impressions), inst = num(o.installs), rev = num(o.revenue);
+      if (key === 'ctr') return imp ? (clicks / imp * 100) : null;   // 클릭/노출
+      if (key === 'cpc') return clicks ? (cost / clicks) : null;      // 비용/클릭
+      if (key === 'cpa') return inst ? (cost / inst) : null;          // 비용/설치
+      if (key === 'roas') return cost ? (rev / cost * 100) : null;    // 매출/비용
+      return null;
+    }
+    function fmtDerived(key, unit, o) {
+      const v = calcDerived(key, o);
+      if (v === null) return '-';
+      if (unit === 'pct') return v.toFixed(key === 'ctr' ? 2 : 0) + '%';
+      return Math.round(v).toLocaleString();
+    }
   %>
 
   <div class="card">
@@ -120,7 +142,7 @@
           <table id="raw-table">
             <tr>
               <% columnDefs.forEach(c => { %>
-                <th data-col="<%= c.key %>"><%= c.label %></th>
+                <th data-col="<%= c.key %>"<%- (c.num || c.derived) ? ' class="num"' : '' %>><%= c.label %></th>
               <% }) %>
             </tr>
             <% rows.forEach(r => { %>
@@ -128,8 +150,10 @@
                 <% columnDefs.forEach(c => { %>
                   <% if (c.key === 'date') { %>
                     <td data-col="date"><%= r.date ? new Date(r.date).toISOString().slice(0,10) : '' %></td>
-                  <% } else if (numericKeys.includes(c.key)) { %>
-                    <td data-col="<%= c.key %>"><%= Number(r[c.key] || 0).toLocaleString() %></td>
+                  <% } else if (c.derived) { %>
+                    <td data-col="<%= c.key %>" class="num"><%= fmtDerived(c.key, c.unit, r) %></td>
+                  <% } else if (c.num) { %>
+                    <td data-col="<%= c.key %>" class="num"><%= num(r[c.key]).toLocaleString() %></td>
                   <% } else { %>
                     <td data-col="<%= c.key %>" title="<%= r[c.key] %>"><%= r[c.key] %></td>
                   <% } %>
@@ -139,10 +163,12 @@
             <% const t = (typeof totals === 'undefined' || !totals) ? {} : totals; %>
             <tr class="totals-row">
               <% columnDefs.forEach((c, i) => { %>
-                <% if (numericKeys.includes(c.key)) { %>
-                  <td data-col="<%= c.key %>"><%= Number(t[c.key] || 0).toLocaleString() %></td>
+                <% if (c.derived) { %>
+                  <td data-col="<%= c.key %>" class="num"><%= fmtDerived(c.key, c.unit, t) %></td>
+                <% } else if (c.num) { %>
+                  <td data-col="<%= c.key %>" class="num"><%= num(t[c.key]).toLocaleString() %></td>
                 <% } else if (i === 0) { %>
-                  <td data-col="<%= c.key %>" title="합계 (<%= Number(t.count || 0).toLocaleString() %>건)">합계 (<%= Number(t.count || 0).toLocaleString() %>건)</td>
+                  <td data-col="<%= c.key %>" title="합계 (<%= num(t.count).toLocaleString() %>건)">합계 (<%= num(t.count).toLocaleString() %>건)</td>
                 <% } else { %>
                   <td data-col="<%= c.key %>"></td>
                 <% } %>

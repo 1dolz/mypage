@@ -63,6 +63,8 @@ async function initDb() {
       p75 NUMERIC DEFAULT 0,
       p100 NUMERIC DEFAULT 0,
       installs NUMERIC DEFAULT 0,
+      purchases NUMERIC DEFAULT 0,
+      revenue NUMERIC DEFAULT 0,
       extra JSONB,
       created_at TIMESTAMP DEFAULT NOW()
     );
@@ -84,6 +86,8 @@ async function initDb() {
   await pool.query(`ALTER TABLE settings ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;`);
   await pool.query(`ALTER TABLE manual_sources ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;`);
   await pool.query(`ALTER TABLE raw_data ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;`);
+  await pool.query(`ALTER TABLE raw_data ADD COLUMN IF NOT EXISTS purchases NUMERIC DEFAULT 0;`);
+  await pool.query(`ALTER TABLE raw_data ADD COLUMN IF NOT EXISTS revenue NUMERIC DEFAULT 0;`);
 
   const bootstrapUserId = await ensureBootstrapUser();
   if (bootstrapUserId) {
@@ -268,12 +272,13 @@ async function insertRawRows(userId, rows) {
   for (const r of rows) {
     await pool.query(
       `INSERT INTO raw_data
-        (user_id, source, date, campaign_name, adgroup_name, ad_name, cost, impressions, clicks, views, video_play, p25, p50, p75, p100, installs, extra)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+        (user_id, source, date, campaign_name, adgroup_name, ad_name, cost, impressions, clicks, views, video_play, p25, p50, p75, p100, installs, purchases, revenue, extra)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
       [
         userId, r.source, r.date || null, r.campaign_name || '', r.adgroup_name || '', r.ad_name || '',
         r.cost || 0, r.impressions || 0, r.clicks || 0, r.views || 0, r.video_play || 0,
         r.p25 || 0, r.p50 || 0, r.p75 || 0, r.p100 || 0, r.installs || 0,
+        r.purchases || 0, r.revenue || 0,
         r.extra ? JSON.stringify(r.extra) : null,
       ]
     );
@@ -338,7 +343,7 @@ async function sumRawData(userId, { source, startDate, endDate }) {
     params.push(endDate);
   }
   const where = `WHERE ${conditions.join(' AND ')}`;
-  const numericCols = ['cost', 'impressions', 'clicks', 'views', 'video_play', 'p25', 'p50', 'p75', 'p100', 'installs'];
+  const numericCols = ['cost', 'impressions', 'clicks', 'views', 'video_play', 'p25', 'p50', 'p75', 'p100', 'installs', 'purchases', 'revenue'];
   const sumExprs = numericCols.map((c) => `COALESCE(SUM(${c}), 0) AS ${c}`).join(', ');
   const { rows } = await pool.query(`SELECT COUNT(*)::int AS count, ${sumExprs} FROM raw_data ${where}`, params);
   return rows[0];
