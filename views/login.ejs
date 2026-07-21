@@ -17,7 +17,7 @@
     </form>
     <% if (error) { %><div class="error"><%= error %></div><% } %>
     <div class="hint" style="margin-top:14px;">
-      계정이 없으신가요? <a href="/signup">회원가입 (@<%= allowedDomain %> 이메일만 가능)</a>
+      계정이 없으신가요? <a href="/signup">회원가입<% if (allowedDomain !== '*') { %> (@<%= allowedDomain %> 이메일만 가능)<% } %></a>
     </div>
   </div>
 </body>

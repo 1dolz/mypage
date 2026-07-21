@@ -32,17 +32,24 @@
     <div class="card">
       <table>
         <tr><th>키</th><th>값</th><th></th></tr>
-        <% settings.forEach(s => { %>
+        <% settings.forEach((s, i) => { %>
           <tr>
-            <form method="POST" action="/settings">
-              <td style="text-align:left;"><input type="text" name="key" value="<%= s.key %>" readonly style="border:none; background:none;"></td>
-              <td style="text-align:left;"><input type="text" name="value" value="<%= s.value %>" style="width:300px;"></td>
-              <td><button type="submit" class="secondary">저장</button></td>
-            </form>
-            <form method="POST" action="/settings/delete" style="display:inline;">
-              <input type="hidden" name="key" value="<%= s.key %>">
-              <button type="submit" class="danger">삭제</button>
-            </form>
+            <td style="text-align:left;">
+              <input type="text" name="key" value="<%= s.key %>" readonly form="setform-<%= i %>" style="border:none; background:none;">
+            </td>
+            <td style="text-align:left;">
+              <input type="text" name="value" value="<%= s.value %>" form="setform-<%= i %>" style="width:300px;">
+            </td>
+            <td style="white-space:nowrap;">
+              <form id="setform-<%= i %>" method="POST" action="/settings" style="display:inline;">
+                <button type="submit" class="secondary">저장</button>
+              </form>
+              <form method="POST" action="/settings/delete" style="display:inline; margin-left:6px;"
+                onsubmit="return confirm('[<%= s.key %>] 설정을 삭제할까요?');">
+                <input type="hidden" name="key" value="<%= s.key %>">
+                <button type="submit" class="danger">삭제</button>
+              </form>
+            </td>
           </tr>
         <% }) %>
       </table>

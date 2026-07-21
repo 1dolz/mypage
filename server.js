@@ -52,11 +52,15 @@ app.use(
 );
 
 // ===== 계정/로그인 =====
-// 회사 이메일(@thesmc.co.kr)만 가입 가능. 필요하면 ALLOWED_EMAIL_DOMAIN 환경변수로 바꿀 수 있음.
-const ALLOWED_EMAIL_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'thesmc.co.kr').toLowerCase();
+// 기본은 모든 이메일 도메인 허용(*). 특정 회사 도메인으로만 제한하려면 ALLOWED_EMAIL_DOMAIN 환경변수를 그 도메인으로 설정.
+const ALLOWED_EMAIL_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || '*').toLowerCase().trim();
+const ALLOW_ALL_EMAILS = ALLOWED_EMAIL_DOMAIN === '' || ALLOWED_EMAIL_DOMAIN === '*';
 
 function isAllowedEmail(email) {
-  return String(email || '').toLowerCase().trim().endsWith('@' + ALLOWED_EMAIL_DOMAIN);
+  const e = String(email || '').toLowerCase().trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return false; // 기본 이메일 형식 검사
+  if (ALLOW_ALL_EMAILS) return true;
+  return e.endsWith('@' + ALLOWED_EMAIL_DOMAIN);
 }
 
 function requireLogin(req, res, next) {
@@ -99,7 +103,9 @@ app.post('/signup', async (req, res) => {
     return renderError('이메일과 비밀번호를 입력해주세요.');
   }
   if (!isAllowedEmail(email)) {
-    return renderError(`@${ALLOWED_EMAIL_DOMAIN} 이메일로만 가입할 수 있습니다.`);
+    return renderError(
+      ALLOW_ALL_EMAILS ? '올바른 이메일 형식을 입력해주세요.' : `@${ALLOWED_EMAIL_DOMAIN} 이메일로만 가입할 수 있습니다.`
+    );
   }
   if (password.length < 8) {
     return renderError('비밀번호는 8자 이상이어야 합니다.');

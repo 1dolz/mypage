@@ -8,10 +8,12 @@
 <body>
   <div class="login-box card">
     <h1>매체 raw 허브</h1>
-    <div class="hint" style="margin-bottom:10px;">@<%= allowedDomain %> 이메일로만 가입할 수 있습니다.</div>
+    <div class="hint" style="margin-bottom:10px;">
+      <% if (allowedDomain === '*') { %>이메일과 비밀번호로 가입할 수 있습니다.<% } else { %>@<%= allowedDomain %> 이메일로만 가입할 수 있습니다.<% } %>
+    </div>
     <form method="POST" action="/signup">
       <label>이메일</label>
-      <input type="email" name="email" placeholder="you@<%= allowedDomain %>" autofocus style="width:100%; box-sizing:border-box;">
+      <input type="email" name="email" placeholder="<%= allowedDomain === '*' ? 'you@example.com' : ('you@' + allowedDomain) %>" autofocus style="width:100%; box-sizing:border-box;">
       <label>비밀번호 (8자 이상)</label>
       <input type="password" name="password" style="width:100%; box-sizing:border-box;">
       <label>비밀번호 확인</label>
