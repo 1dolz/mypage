@@ -15,6 +15,18 @@ const { fetchAppleAds } = require('./fetchers/appleAds');
 const { fetchAdpopcorn } = require('./fetchers/adpopcorn');
 const { fetchNaverAds } = require('./fetchers/naver');
 const { parseManualUploadFile, DEFAULT_FIELD_MAP } = require('./lib/manualUpload');
+const nameIndexLib = require('./lib/nameIndex');
+
+// 계정별 이름 매핑(Index) 설정 로드 (settings.NAME_INDEX = JSON)
+async function loadNameIndex(userId) {
+  const raw = await db.getSetting(userId, 'NAME_INDEX', '');
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) || {};
+  } catch (e) {
+    return {};
+  }
+}
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -131,7 +143,8 @@ app.get('/debug/outbound-ip', requireLogin, async (req, res) => {
 // ===== 대시보드 (raw 데이터 조회) =====
 app.get('/', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
-  const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate });
+  const rawRows = await db.queryRawData(req.session.userId, { source, startDate, endDate });
+  const rows = nameIndexLib.applyNameIndex(rawRows, await loadNameIndex(req.session.userId));
   const totals = await db.sumRawData(req.session.userId, { source, startDate, endDate });
   const sources = await db.distinctSources(req.session.userId);
   res.render('dashboard', {
@@ -178,7 +191,8 @@ function toCsvValue(v) {
 
 app.get('/export.csv', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
-  const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate, limit: 50000 });
+  const rawRows = await db.queryRawData(req.session.userId, { source, startDate, endDate, limit: 50000 });
+  const rows = nameIndexLib.applyNameIndex(rawRows, await loadNameIndex(req.session.userId));
   const { headers, dataRows } = buildExportRows(rows);
 
   const lines = [headers, ...dataRows].map((row) => row.map(toCsvValue).join(','));
@@ -192,7 +206,8 @@ app.get('/export.csv', requireLogin, async (req, res) => {
 
 app.get('/export.xlsx', requireLogin, async (req, res) => {
   const { source, startDate, endDate } = req.query;
-  const rows = await db.queryRawData(req.session.userId, { source, startDate, endDate, limit: 50000 });
+  const rawRows = await db.queryRawData(req.session.userId, { source, startDate, endDate, limit: 50000 });
+  const rows = nameIndexLib.applyNameIndex(rawRows, await loadNameIndex(req.session.userId));
   const { headers, dataRows } = buildExportRows(rows);
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
@@ -329,10 +344,23 @@ app.get('/settings', requireLogin, async (req, res) => {
   // 매체별 스키마에 포함된 키는 일반 설정 목록(키-값 테이블)에서는 숨겨서
   // 각자의 탭에서만 관리하도록 함
   const mediaKeys = new Set(MEDIA_SETTINGS_SCHEMA.flatMap((m) => m.fields.map((f) => f.key)));
-  const generalSettings = settings.filter((s) => !mediaKeys.has(s.key));
+  const generalSettings = settings.filter((s) => !mediaKeys.has(s.key) && s.key !== 'NAME_INDEX');
 
   const manualSources = await db.getManualSources(userId);
   const manualDefaults = await db.getManualDefaults(userId);
+
+  // 이름 매핑(Index): 데이터가 있는 매체 ∪ 수동 업로드 매체를 대상으로, 각 매체의 저장된 규칙을 편집용 TSV로 변환
+  const nameIndex = await loadNameIndex(userId);
+  const dataSources = await db.distinctSources(userId);
+  const indexSources = [...new Set([...dataSources, ...manualSources.map((m) => m.id)])];
+  const nameIndexView = {};
+  indexSources.forEach((s) => {
+    const cfg = nameIndex[s] || {};
+    nameIndexView[s] = {
+      keyField: cfg.keyField === 'ad_name' ? 'ad_name' : 'campaign_name',
+      text: nameIndexLib.stringifyIndexRows(cfg.rows || []),
+    };
+  });
 
   // 수동 업로드 매체 탭에서 선택된 매체 (드롭다운으로 고름). 없으면 첫 번째 매체, 그것도 없으면 "새 매체 추가" 상태.
   const selectedManualId =
@@ -347,9 +375,28 @@ app.get('/settings', requireLogin, async (req, res) => {
     manualDefaults,
     selectedManualId,
     selectedManual,
+    indexSources,
+    nameIndexView,
     saved: req.query.saved === '1',
     userEmail: req.session.userEmail,
   });
+});
+
+// 이름 매핑(Index) 저장: 매체별로 매칭 키 + 붙여넣은 표를 파싱해 NAME_INDEX(JSON)에 저장
+app.post('/settings/name-index', requireLogin, async (req, res) => {
+  const userId = req.session.userId;
+  const { source, keyField } = req.body;
+  if (source) {
+    const all = await loadNameIndex(userId);
+    const parsed = nameIndexLib.parseIndexText(req.body.rows || '');
+    if (parsed.length) {
+      all[source] = { keyField: keyField === 'ad_name' ? 'ad_name' : 'campaign_name', rows: parsed };
+    } else {
+      delete all[source];
+    }
+    await db.setSetting(userId, 'NAME_INDEX', JSON.stringify(all));
+  }
+  res.redirect('/settings?saved=1#tab-nameindex');
 });
 
 // ===== 수동 업로드 매체 관리 (매체 추가/수정/삭제를 코드 수정 없이 이 화면에서) =====
@@ -362,6 +409,8 @@ const MANUAL_UPLOAD_FIELD_KEYS = [
   'impressions',
   'clicks',
   'installs',
+  'purchases',
+  'revenue',
 ];
 
 // 모든 매체에 공통으로 적용되는 기본 컬럼명 저장 (매체별 재정의보다 우선순위가 낮음)

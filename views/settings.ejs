@@ -22,6 +22,7 @@
   <div class="tabs">
     <button type="button" class="tab-btn active" data-tab="general">일반 설정</button>
     <button type="button" class="tab-btn" data-tab="manual">수동 업로드 매체</button>
+    <button type="button" class="tab-btn" data-tab="nameindex">이름 매핑</button>
     <% mediaSchema.forEach(m => { %>
       <button type="button" class="tab-btn" data-tab="<%= m.id %>"><%= m.label %></button>
     <% }) %>
@@ -69,6 +70,8 @@
       { key: 'impressions', label: '노출' },
       { key: 'clicks', label: '클릭' },
       { key: 'installs', label: '설치' },
+      { key: 'purchases', label: '구매' },
+      { key: 'revenue', label: '매출' },
     ];
   %>
 
@@ -234,6 +237,38 @@
       <% } %>
     </div>
   <% }) %>
+
+  <div id="tab-nameindex" class="tab-content">
+    <div class="card">
+      <h3 style="margin-top:0;">이름 매핑 (Index)</h3>
+      <p class="hint" style="line-height:1.6;">
+        매체가 주는 raw 이름을 표준 이름으로 바꿉니다. 엑셀에서
+        <b>매칭값 · 표준 캠페인명 · 표준 광고그룹명 · 표준 광고명</b> 순서(탭 구분)로 복사해 붙여넣으세요.
+        뒤쪽 열이나 빈 칸은 원본을 그대로 둡니다. <b>조회·CSV·Excel에 즉시 반영</b>되고 원본 데이터는 바뀌지 않습니다.
+      </p>
+      <% if (indexSources.length === 0) { %>
+        <p class="hint">아직 데이터가 있는 매체가 없습니다. 먼저 수집/업로드하면 매체별로 매핑을 설정할 수 있어요.</p>
+      <% } %>
+      <% indexSources.forEach(s => { %>
+        <form method="POST" action="/settings/name-index" class="field-row"
+          style="border-top:1px solid var(--border-color); padding-top:14px; margin-top:14px;">
+          <input type="hidden" name="source" value="<%= s %>">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+            <strong style="min-width:80px;"><%= s %></strong>
+            <label style="margin:0;">매칭 키</label>
+            <select name="keyField" style="width:auto;">
+              <option value="campaign_name" <%= nameIndexView[s].keyField === 'campaign_name' ? 'selected' : '' %>>캠페인명</option>
+              <option value="ad_name" <%= nameIndexView[s].keyField === 'ad_name' ? 'selected' : '' %>>광고명</option>
+            </select>
+            <button type="submit" class="secondary" style="margin-left:auto;">저장</button>
+          </div>
+          <textarea name="rows" rows="5" spellcheck="false"
+            style="width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:6px; padding:8px; font-size:12px; white-space:pre; overflow:auto;"
+            placeholder="매칭값[탭]표준 캠페인명[탭]표준 광고그룹명[탭]표준 광고명"><%= nameIndexView[s].text %></textarea>
+        </form>
+      <% }) %>
+    </div>
+  </div>
 
   <script>
     document.querySelectorAll('.tab-btn').forEach((btn) => {
