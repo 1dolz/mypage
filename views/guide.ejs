@@ -83,11 +83,63 @@
 
   <div class="card guide">
     <h3 id="media">5. 매체 자동 연동</h3>
-    <ul>
-      <li><a href="/settings">설정</a>의 매체 탭(Meta·Google Ads·TikTok·Apple·Adpopcorn·네이버)에서 API 키/토큰을 입력합니다.</li>
-      <li>입력 후 대시보드의 <b>지금 자동수집 실행</b>을 누르면 이번 달 1일~어제 데이터를 다시 계산해 저장합니다. (매일 자동으로도 수집)</li>
-      <li>각 매체 토큰 발급 방법은 해당 탭의 안내를 참고하세요.</li>
-    </ul>
+    <p><a href="/settings">설정</a>의 매체 탭에서 아래 값을 입력·저장한 뒤, 대시보드의 <b>지금 자동수집 실행</b>을 누르면 이번 달 1일~어제 데이터를 수집합니다(매일 자동으로도 수집). 각 입력칸의 <span class="tip"><span class="tip-icon">i</span></span> 아이콘에도 짧은 설명이 있어요.</p>
+    <p class="hint">⚠️ 각 매체 콘솔 화면은 자주 바뀝니다. 메뉴 이름이 다르면 비슷한 항목을 찾아주세요.</p>
+
+    <details>
+      <summary><b>Meta</b> 연동 방법</summary>
+      <ol>
+        <li>developers.facebook.com → <b>앱 만들기</b>(비즈니스 유형) → 앱 <b>기본 설정</b>에서 <b>App ID / App Secret</b> 확인</li>
+        <li>제품에 <b>Marketing API</b> 추가, <code>ads_read</code> 권한 포함한 <b>액세스 토큰</b> 발급</li>
+        <li>Ads Manager에서 광고 계정 ID(<code>act_</code>로 시작) 확인</li>
+        <li>설정 → Meta 탭에 App ID / App Secret / Ad Account ID / Access Token 입력·저장 (단기 토큰은 장기 토큰으로 자동 교환)</li>
+        <li><b>전환 이벤트</b>에 매출/구매로 볼 이벤트 지정 (예: <code>omni_purchase</code>)</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary><b>Google Ads</b> 연동 방법</summary>
+      <ol>
+        <li>Google Ads → 도구 → <b>API 센터</b>에서 <b>Developer Token</b> 발급(승인 필요할 수 있음)</li>
+        <li>Google Cloud 콘솔 → <b>OAuth 동의 화면</b> 설정 후 <b>OAuth 클라이언트</b> 생성 → <b>Client ID / Secret</b></li>
+        <li>설정 → Google Ads 탭에 Developer Token / Client ID / Secret / Customer ID / MCC ID 입력·저장 (Customer·MCC ID는 하이픈 없이 숫자)</li>
+        <li>같은 탭의 <b>인증 URL 열기</b> → 구글 로그인·동의 → 표시된 <b>인증 코드</b> 복사 → <b>발급</b> 클릭 → Refresh Token 자동 저장</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary><b>TikTok</b> 연동 방법</summary>
+      <ol>
+        <li>TikTok for Business(Marketing API) 개발자 앱 생성 → <b>App ID / Secret</b></li>
+        <li>광고 계정 인가(authorize) 후 받은 <b>Auth Code</b> 확보 (1회용)</li>
+        <li>설정 → TikTok 탭에 App ID / Secret / Auth Code 저장 → <b>Access Token 발급</b> 클릭 → Access Token·Advertiser ID 자동 채움</li>
+        <li>Auth Code는 1회용이라 실패하면 새로 발급받아 다시 저장 후 시도</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary><b>Apple Search Ads</b> 연동 방법</summary>
+      <ol>
+        <li>Apple Search Ads → 계정 설정 → <b>API</b>에서 키 생성 → <b>.p8 키 파일</b> 다운로드, <b>Key ID / Client ID / Team ID / Org ID</b> 확인</li>
+        <li>설정 → Apple 탭에 위 값 입력, Private Key는 .p8 내용을 <code>-----BEGIN</code>~<code>END-----</code>까지 통째로 붙여넣기</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary><b>Adpopcorn</b> 연동 방법</summary>
+      <ol>
+        <li>애드팝콘 대시보드에서 <b>Access Token</b> 발급</li>
+        <li>설정 → Adpopcorn 탭에 입력. 특정 캠페인만 볼 거면 "집계할 캠페인명"에 한 줄에 하나씩 입력(비우면 전체)</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary><b>네이버 검색광고</b> 연동 방법</summary>
+      <ol>
+        <li>네이버 검색광고 → 도구 → <b>API 사용 관리</b>에서 <b>API Key / Secret Key</b> 발급, <b>Customer ID</b> 확인 (Secret Key는 발급 시 한 번만 보임)</li>
+        <li>설정 → 네이버 탭에 세 값 입력·저장</li>
+      </ol>
+    </details>
   </div>
 
   <div class="card guide">
