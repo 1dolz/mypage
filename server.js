@@ -162,6 +162,11 @@ app.get('/', requireLogin, async (req, res) => {
   });
 });
 
+// 사용 가이드
+app.get('/guide', requireLogin, (req, res) => {
+  res.render('guide', { userEmail: req.session.userEmail });
+});
+
 // 특정 매체의 raw 데이터를 통째로 삭제 (테스트 데이터/이름 바뀐 매체 정리용)
 app.post('/delete-source', requireLogin, async (req, res) => {
   const { source } = req.body;

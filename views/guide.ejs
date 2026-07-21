@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>가이드 - 매체 raw 허브</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="top-nav">
+    <h1>가이드</h1>
+    <div>
+      <a href="/">Raw 데이터</a>
+      <a href="/upload">업로드</a>
+      <a href="/settings">설정</a>
+      <a href="/guide">가이드</a>
+      <% if (userEmail) { %><span class="hint" style="margin-left:16px;"><%= userEmail %></span><% } %>
+      <a href="/logout">로그아웃</a>
+    </div>
+  </div>
+
+  <div class="card guide">
+    <h2>매체 raw 허브 사용 가이드</h2>
+    <p class="hint">광고 매체별 raw 데이터를 한곳에 모아 조회·내보내는 도구입니다. 처음이라면 아래 순서대로 따라 해보세요.</p>
+    <div class="toc">
+      <ul>
+        <li><a href="#start">1. 시작하기 (전체 흐름)</a></li>
+        <li><a href="#dashboard">2. 대시보드 보는 법</a></li>
+        <li><a href="#metrics">3. 지표 계산식 (CTR·CPC·CPA·ROAS)</a></li>
+        <li><a href="#upload">4. 수동 업로드</a></li>
+        <li><a href="#media">5. 매체 자동 연동</a></li>
+        <li><a href="#conversion">6. 전환 이벤트 (매출·구매 기준)</a></li>
+        <li><a href="#index">7. 이름 매핑 (Index)</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card guide">
+    <h3 id="start">1. 시작하기 (전체 흐름)</h3>
+    <ol>
+      <li><b>회원가입 / 로그인</b> — 이메일과 비밀번호로 가입합니다. 계정마다 데이터·설정이 분리됩니다.</li>
+      <li><b>데이터 채우기</b> — 두 가지 방법이 있습니다.
+        <ul>
+          <li><b>수동 업로드</b>: 매체에서 내려받은 엑셀/CSV를 업로드 (아래 4번)</li>
+          <li><b>자동 연동</b>: <a href="/settings">설정</a>에서 매체 API 키를 넣고 자동 수집 (아래 5번)</li>
+        </ul>
+      </li>
+      <li><b>조회</b> — <a href="/">Raw 데이터</a> 화면에서 매체·기간으로 조회하고, 필요하면 CSV/Excel로 내보냅니다.</li>
+    </ol>
+  </div>
+
+  <div class="card guide">
+    <h3 id="dashboard">2. 대시보드 보는 법</h3>
+    <ul>
+      <li><b>표시 항목(좌측 패널)</b> — 체크박스로 컬럼을 켜고 끕니다. 차원(날짜·매체·캠페인…)과 지표(비용·노출…), 효율(계산 지표)로 묶여 있어요. 패널은 ◀ 버튼으로 접을 수 있습니다.</li>
+      <li><b>컬럼 순서</b> — 표의 <b>열 제목을 드래그</b>하면 순서가 바뀝니다.</li>
+      <li><b>필터</b> — 매체·시작일·종료일을 고르고 <b>조회</b>를 눌러야 반영됩니다. (날짜만 바꾸면 아직 적용 안 됨)</li>
+      <li><b>내보내기</b> — <b>내보내기 ▾</b>에서 CSV / Excel 중 선택. 현재 필터 그대로 내려받습니다.</li>
+      <li><b>합계 행</b> — 표 맨 아래 고정. 지금 <b>필터에 맞는 전체 데이터</b>의 합계입니다(화면에 보이는 행만이 아님).</li>
+      <li><b>관리 작업(상단)</b> — <b>지금 자동수집 실행</b>은 연동된 매체를 즉시 수집. <b>선택 매체 데이터 삭제</b>는 매체를 고른 뒤 삭제(주의).</li>
+    </ul>
+  </div>
+
+  <div class="card guide">
+    <h3 id="metrics">3. 지표 계산식</h3>
+    <p>효율 지표는 저장된 값이 아니라 자동으로 계산됩니다. 합계 행에서는 "비율의 합"이 아니라 <b>합계값끼리 나눈 값</b>으로 계산돼요.</p>
+    <ul>
+      <li><b>CTR</b> = 클릭 ÷ 노출 × 100 (%)</li>
+      <li><b>CPC</b> = 비용 ÷ 클릭</li>
+      <li><b>CPA</b> = 비용 ÷ 설치</li>
+      <li><b>ROAS</b> = 매출 ÷ 비용 × 100 (%)</li>
+    </ul>
+    <p class="hint">분모가 0이면 <code>-</code> 로 표시됩니다. 매출·ROAS를 보려면 매출/구매 데이터가 채워져 있어야 합니다(전환 이벤트 설정 또는 업로드 파일에 매출 열 포함).</p>
+  </div>
+
+  <div class="card guide">
+    <h3 id="upload">4. 수동 업로드</h3>
+    <ul>
+      <li><a href="/upload">업로드</a> 화면에서 매체 카드에 파일을 끌어다 놓거나 클릭해서 올립니다.</li>
+      <li>컬럼명은 자동 인식됩니다(예: <code>Spend/비용</code>, <code>Impressions/노출</code>, <code>매출/전환매출액</code>, <code>구매/전환수</code> 등).</li>
+      <li>컬럼명이 다르면 <a href="/settings">설정 → 수동 업로드 매체</a>에서 매체별로 컬럼명을 지정하세요.</li>
+    </ul>
+  </div>
+
+  <div class="card guide">
+    <h3 id="media">5. 매체 자동 연동</h3>
+    <ul>
+      <li><a href="/settings">설정</a>의 매체 탭(Meta·Google Ads·TikTok·Apple·Adpopcorn·네이버)에서 API 키/토큰을 입력합니다.</li>
+      <li>입력 후 대시보드의 <b>지금 자동수집 실행</b>을 누르면 이번 달 1일~어제 데이터를 다시 계산해 저장합니다. (매일 자동으로도 수집)</li>
+      <li>각 매체 토큰 발급 방법은 해당 탭의 안내를 참고하세요.</li>
+    </ul>
+  </div>
+
+  <div class="card guide">
+    <h3 id="conversion">6. 전환 이벤트 (매출·구매 기준)</h3>
+    <p>"전환"은 사람마다 다릅니다(구매·등록·앱설치…). 그래서 매체별로 <b>어떤 이벤트를 전환/매출로 집계할지</b>를 설정에서 고릅니다.</p>
+    <ul>
+      <li><a href="/settings">설정 → 매체 탭</a>의 <b>전환 이벤트</b> 항목에 이벤트를 지정합니다. (예: Meta는 <code>omni_purchase</code>, 등록이면 <code>complete_registration</code>)</li>
+      <li>기준을 바꾸고 싶으면 <b>설정값만</b> 바꾸면 됩니다. 다음 수집부터 반영돼요.</li>
+    </ul>
+  </div>
+
+  <div class="card guide">
+    <h3 id="index">7. 이름 매핑 (Index)</h3>
+    <p>매체가 주는 캠페인명/광고명이 원하는 형태가 아닐 때, 표준 이름으로 바꿉니다. 원본은 그대로 두고 <b>조회·내보내기에서만</b> 치환되며, 고치면 과거 데이터까지 즉시 반영됩니다.</p>
+    <ul>
+      <li><a href="/settings">설정 → 이름 매핑</a> 탭에서 매체별 <b>매칭 키</b>(캠페인명/광고명)를 고릅니다.</li>
+      <li>엑셀에서 <b>매칭값 · 표준 캠페인명 · 표준 광고그룹명 · 표준 광고명</b> 순서(4열, 탭 구분)로 복사해 붙여넣고 저장합니다.</li>
+      <li>빈 칸은 원본을 유지합니다(예: 광고그룹만 채우기).</li>
+    </ul>
+  </div>
+</body>
+</html>

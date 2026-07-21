@@ -12,6 +12,7 @@
       <a href="/">Raw 데이터</a>
       <a href="/upload">업로드</a>
       <a href="/settings">설정</a>
+      <a href="/guide">가이드</a>
       <% if (userEmail) { %><span class="hint" style="margin-left:16px;"><%= userEmail %></span><% } %>
       <a href="/logout">로그아웃</a>
     </div>
@@ -28,18 +29,18 @@
       { key: 'impressions', label: '노출', default: true, group: 'metric', num: true },
       { key: 'clicks', label: '클릭', default: true, group: 'metric', num: true },
       { key: 'installs', label: '설치', default: true, group: 'metric', num: true },
-      { key: 'purchases', label: '구매', default: false, group: 'metric', num: true },
-      { key: 'revenue', label: '매출', default: false, group: 'metric', num: true },
+      { key: 'purchases', label: '구매', default: false, group: 'metric', num: true, tip: '설정한 <b>전환 이벤트</b>의 건수입니다. 매체별 전환 이벤트는 <a href="/settings">설정</a>에서 지정해요.' },
+      { key: 'revenue', label: '매출', default: false, group: 'metric', num: true, tip: '설정한 전환 이벤트의 <b>전환값(매출)</b>입니다. 값이 없으면 ROAS도 계산되지 않아요.' },
       { key: 'views', label: '조회수', default: false, group: 'metric', num: true },
       { key: 'video_play', label: '6초 재생', default: false, group: 'metric', num: true },
       { key: 'p25', label: '25% 시청', default: false, group: 'metric', num: true },
       { key: 'p50', label: '50% 시청', default: false, group: 'metric', num: true },
       { key: 'p75', label: '75% 시청', default: false, group: 'metric', num: true },
       { key: 'p100', label: '100% 시청', default: false, group: 'metric', num: true },
-      { key: 'ctr', label: 'CTR', default: false, group: 'eff', derived: true, unit: 'pct' },
-      { key: 'cpc', label: 'CPC', default: false, group: 'eff', derived: true, unit: 'won' },
-      { key: 'cpa', label: 'CPA', default: false, group: 'eff', derived: true, unit: 'won' },
-      { key: 'roas', label: 'ROAS', default: false, group: 'eff', derived: true, unit: 'pct' },
+      { key: 'ctr', label: 'CTR', default: false, group: 'eff', derived: true, unit: 'pct', tip: '<b>클릭률</b> = 클릭 ÷ 노출 × 100 (%)' },
+      { key: 'cpc', label: 'CPC', default: false, group: 'eff', derived: true, unit: 'won', tip: '<b>클릭당 비용</b> = 비용 ÷ 클릭' },
+      { key: 'cpa', label: 'CPA', default: false, group: 'eff', derived: true, unit: 'won', tip: '<b>설치(액션)당 비용</b> = 비용 ÷ 설치' },
+      { key: 'roas', label: 'ROAS', default: false, group: 'eff', derived: true, unit: 'pct', tip: '<b>광고 수익률</b> = 매출 ÷ 비용 × 100 (%). 매출 데이터가 있어야 계산돼요.' },
     ];
     const groups = [
       { id: 'dim', title: '차원', items: columnDefs.filter(c => c.group === 'dim') },
@@ -129,7 +130,10 @@
             <div class="column-group">
               <div class="column-group-title"><%= g.title %></div>
               <% g.items.forEach(c => { %>
-                <label class="col-check"><input type="checkbox" data-col="<%= c.key %>"><span><%= c.label %></span></label>
+                <div class="col-check-row">
+                  <label class="col-check"><input type="checkbox" data-col="<%= c.key %>"><span><%= c.label %></span></label>
+                  <% if (c.tip) { %><span class="tip"><span class="tip-icon" tabindex="0" aria-label="설명">i</span><span class="tip-bubble"><%- c.tip %></span></span><% } %>
+                </div>
               <% }) %>
             </div>
           <% }) %>

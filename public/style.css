@@ -153,7 +153,9 @@ th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2p
 .panel-toggle:hover { background: #e2e8f0; color: #1e293b; }
 .column-group { margin-bottom: 12px; }
 .column-group-title { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: #94a3b8; margin-bottom: 6px; }
+.col-check-row { display: flex; align-items: center; gap: 2px; }
 .col-check {
+  flex: 1; min-width: 0;
   display: flex; align-items: center; gap: 8px; margin: 0 0 1px; padding: 4px 6px;
   font-size: 13px; color: #334155; border-radius: 6px; cursor: pointer;
 }
@@ -188,6 +190,35 @@ th { background: white; position: sticky; top: 0; z-index: 10; border-bottom: 2p
 .login-box { max-width: 320px; margin: 100px auto; }
 .error { color: var(--danger-color); font-size: 13px; margin-top: 8px; }
 .hint { color: #888; font-size: 12px; margin-top: 4px; }
+
+/* 설명 말풍선: ⓘ 아이콘에 hover/focus 시 설명 표시 (JS 없이 CSS만) */
+.tip { position: relative; display: inline-flex; align-items: center; vertical-align: middle; }
+.tip-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-left: 4px; border-radius: 50%;
+  background: #cbd5e1; color: #fff; font-size: 10px; font-weight: 700; font-style: normal;
+  line-height: 1; cursor: help; user-select: none; flex-shrink: 0;
+}
+.tip-icon:hover, .tip:focus-within .tip-icon { background: var(--primary-color); }
+.tip-bubble {
+  display: none; position: absolute; z-index: 50; left: 0; top: calc(100% + 6px);
+  width: 260px; max-width: 72vw; padding: 10px 12px;
+  background: #1e293b; color: #f1f5f9; font-size: 12px; font-weight: 400; line-height: 1.6;
+  border-radius: 8px; box-shadow: 0 10px 26px -6px rgba(0, 0, 0, 0.35);
+  text-align: left; white-space: normal; font-family: inherit;
+}
+.tip-bubble b { color: #fff; }
+.tip-bubble a { color: #93c5fd; }
+.tip:hover .tip-bubble, .tip:focus-within .tip-bubble { display: block; }
+
+/* 가이드 페이지 */
+.guide h2 { font-size: 17px; margin: 4px 0 10px; }
+.guide h3 { font-size: 15px; margin: 20px 0 6px; }
+.guide p, .guide li { font-size: 14px; line-height: 1.7; color: #333; }
+.guide ul, .guide ol { padding-left: 20px; margin: 6px 0; }
+.guide code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+.guide .toc a { color: var(--primary-color); text-decoration: none; }
+.guide .toc a:hover { text-decoration: underline; }
 
 /* 업로드 화면: 드래그앤드롭 + 클릭 업로드 영역 */
 .dropzone {
