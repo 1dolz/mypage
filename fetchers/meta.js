@@ -46,6 +46,8 @@ async function fetchMetaAds(userId) {
   const appSecret = await db.getSetting(userId, 'META_APP_SECRET');
   const adAccountId = await db.getSetting(userId, 'META_AD_ACCOUNT_ID');
   const marginRate = parseFloat(await db.getSetting(userId, 'MARGIN_RATE', '0.85')) || 0.85;
+  // 전환(구매/매출)으로 집계할 이벤트 action_type. 계정마다 목표가 달라 설정값으로 뺌 (비면 omni_purchase)
+  const conversionEvent = (await db.getSetting(userId, 'META_CONVERSION_EVENT', '')).trim() || 'omni_purchase';
 
   if (!appId || !appSecret || !adAccountId) {
     console.log(
@@ -81,6 +83,7 @@ async function fetchMetaAds(userId) {
     'clicks',
     'spend',
     'actions',
+    'action_values',
     'video_play_actions',
     'video_p25_watched_actions',
     'video_p50_watched_actions',
@@ -127,6 +130,8 @@ async function fetchMetaAds(userId) {
     impressions: Number(row.impressions || 0),
     clicks: Number(row.clicks || 0),
     installs: getAction(row.actions, 'mobile_app_install'),
+    purchases: getAction(row.actions, conversionEvent),        // 설정한 전환 이벤트의 건수
+    revenue: getAction(row.action_values, conversionEvent),    // 같은 이벤트의 전환값(매출)
     views: getActionTotal(row.video_play_actions),
     video_play: getAction(row.actions, 'video_view'),
     p25: getAction(row.video_p25_watched_actions, 'video_view'),

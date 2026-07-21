@@ -274,6 +274,10 @@ const MEDIA_SETTINGS_SCHEMA = [
       { key: 'META_APP_SECRET', label: 'App Secret', type: 'password' },
       { key: 'META_AD_ACCOUNT_ID', label: 'Ad Account ID (act_로 시작)' },
       { key: 'META_ACCESS_TOKEN', label: 'Access Token', type: 'password' },
+      {
+        key: 'META_CONVERSION_EVENT',
+        label: '전환 이벤트 (구매/매출로 집계할 action_type · 비우면 omni_purchase). 예: omni_purchase, offsite_conversion.fb_pixel_purchase, app_custom_event.fb_mobile_purchase, complete_registration',
+      },
     ],
   },
   {
